@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput, SafeAreaView } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -7,11 +7,11 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BottomNavbar } from './BottomNavbar';
 import { auth, db } from '../../firebase/firebase';
 import { doc, getDoc, updateDoc, arrayUnion, setDoc, collection, getDocs } from 'firebase/firestore';
-import { sendNotification } from '../../hooks/sendNotifications';
 import { Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import * as FileSystem from "expo-file-system";
+import { sendNotificationToToken } from '../../hooks/sendNotifications';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type DealDetailsRouteProp = RouteProp<RootStackParamList, 'DealsDetailsInfluenceur'>;
@@ -158,14 +158,11 @@ export const DealDetailsInfluenceurScreen = () => {
         for (const asset of result.assets) {
           const filename = `proofs/${Date.now()}_${Math.floor(Math.random() * 100000)}.jpg`;
           const reference = ref(storageInstance, filename);
-          // ✅ Convertir file:// en blob avec fetch (nouvelle méthode Expo)
           const response = await fetch(asset.uri);
           const blob = await response.blob();
 
-          // Upload
           await uploadBytes(reference, blob);
 
-          // URL publique
           const url = await getDownloadURL(reference);
 
           newUploads.push({
@@ -235,17 +232,24 @@ export const DealDetailsInfluenceurScreen = () => {
 
       await updateDoc(doc(db, "deals", deal.id), { candidatures: updatedCandidatures });
 
-      await sendNotification({
-        toUserId: deal.merchantId,
-        fromUserId: userId,
-        message: "L'influenceur a terminé sa mission et attend votre validation.",
-        relatedDealId: deal.id,
-        targetRoute: "SuiviDealsCommercant",
-        type: "approval_request",
-        receiverId: deal.merchantId,
-      });
-
       setStatus("Approbation");
+      const merchantRef = doc(db, "users", deal.merchantId);
+      const merchantSnap = await getDoc(merchantRef);
+      if (merchantSnap.exists()) {
+        const merchantToken = merchantSnap.data()?.expoPushToken;
+        if (merchantToken) {
+          await sendNotificationToToken(
+            merchantToken,
+            "Preuves soumises",
+            `Un influenceur a terminé le deal "${deal.title}". Consulte ses preuves.`,
+            {
+              screen: "DealsDetailsCommercant",
+              dealId: deal.id,
+              userId,
+            }
+          );
+        }
+      }
     } catch (error) {
       console.error("Erreur lors de la mise à jour du deal :", error);
       Alert.alert("Erreur", "Impossible de marquer comme terminé");
@@ -299,16 +303,23 @@ export const DealDetailsInfluenceurScreen = () => {
 
       await updateDoc(dealRef, { candidatures: arrayUnion(newCandidature) });
 
-      await sendNotification({
-        toUserId: deal.merchantId,
-        fromUserId: user.uid,
-        message: "Un influenceur a postulé à votre deal !",
-        type: "application",
-        relatedDealId: deal.id,
-        targetRoute: 'DealCandidatesCommercant',
-        dealId: deal.id,
-        receiverId: deal.merchantId,
-      });
+      const merchantRef = doc(db, "users", deal.merchantId);
+      const merchantSnap = await getDoc(merchantRef);
+      if (merchantSnap.exists()) {
+        const merchantToken = merchantSnap.data()?.expoPushToken;
+        if (merchantToken) {
+          await sendNotificationToToken(
+            merchantToken,
+            "Nouvelle candidature reçue",
+            `"Un influenceur a postulé à ton deal "${deal.title}".`,
+            {
+              screen: "DealsDetailsCommercant",
+              dealId: deal.id,
+              userId: user.uid,
+            }
+          );
+        }
+      }
 
       const chatId = [user.uid, deal.merchantId].sort().join("");
       const chatRef = doc(db, "chats", chatId);
@@ -377,267 +388,268 @@ export const DealDetailsInfluenceurScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={24} color="#FF6B2E" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Deals</Text>
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <View style={styles.container}>
+        <ScrollView>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Icon name="arrow-left" size={24} color="#FF6B2E" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Deals</Text>
+          </View>
 
-        <View style={styles.dealCard}>
-          <View style={styles.imageContainer}>
-            <Image
-              source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
-              style={styles.dealImage}
-              resizeMode="cover"
-            />
-            <TouchableOpacity style={styles.saveButton} onPress={handleToggleSave}>
+          <View style={styles.dealCard}>
+            <View style={styles.imageContainer}>
               <Image
-                source={saved ? require('../../assets/fullsave.png') : require('../../assets/save.png')}
-                style={styles.saveIcon}
+                source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
+                style={styles.dealImage}
+                resizeMode="cover"
               />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.saveButton} onPress={handleToggleSave}>
+                <Image
+                  source={saved ? require('../../assets/fullsave.png') : require('../../assets/save.png')}
+                  style={styles.saveIcon}
+                />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.dealContent}>
-            <View style={styles.titleContainer}>
-              <View>
-                <Text style={styles.dealTitle}>{deal.title}</Text>
-                <View style={styles.locationContainer}>
-                  <Icon name="map-marker" size={16} color="#FF6B2E" />
-                  <View>
-                    {deal.locationName && (
-                      <Text style={styles.locationName}>{deal.locationName}</Text>
-                    )}
-                    {deal.locationCoords && (
-                      <TouchableOpacity
-                        onPress={() => Linking.openURL(`https://www.google.com/maps?q=${deal.locationCoords.lat},${deal.locationCoords.lng}`)}
-                      >
-                        <Text style={styles.locationLink}>Voir sur Google Maps</Text>
-                      </TouchableOpacity>
-                    )}
+            <View style={styles.dealContent}>
+              <View style={styles.titleContainer}>
+                <View>
+                  <Text style={styles.dealTitle}>{deal.title}</Text>
+                  <View style={styles.locationContainer}>
+                    <Icon name="map-marker" size={16} color="#FF6B2E" />
+                    <View>
+                      {deal.locationName && (
+                        <Text style={styles.locationName}>{deal.locationName}</Text>
+                      )}
+                      {deal.locationCoords && (
+                        <TouchableOpacity
+                          onPress={() => Linking.openURL(`https://www.google.com/maps?q=${deal.locationCoords.lat},${deal.locationCoords.lng}`)}
+                        >
+                          <Text style={styles.locationLink}>Voir sur Google Maps</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
               </View>
-              <Text style={styles.dealId}>#{deal.id}</Text>
-            </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{deal.description}</Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Intérêts</Text>
-              <View style={styles.interestsContainer}>
-                {deal.interests ? (
-                  <View style={styles.interestTag}>
-                    <Text style={styles.interestText}>{deal.interests}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.noInterestText}>Aucun intérêt défini</Text>
-                )}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.description}>{deal.description}</Text>
               </View>
-            </View>
 
-            <View style={styles.infoContainer}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Type de Contenu</Text>
-                <Text style={styles.infoValue}>{deal.typeOfContent || "Non spécifié"}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Date de Validité</Text>
-                <Text style={styles.infoValue}>{deal.validUntil || "Non spécifiée"}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Conditions</Text>
-                <Text style={styles.infoValue}>{deal.conditions || "Aucune condition"}</Text>
-              </View>
-            </View>
-
-          </View>
-
-          <View style={styles.statusSection}>
-            <Text style={styles.statusTitle}>État de la candidature</Text>
-            <ProgressRibbon currentStep={getCurrentStep()} status={status} />
-          </View>
-
-          {status === "Accepté" && (
-            <View style={styles.proofsSection}>
-              <Text style={styles.proofsTitle}>Preuves de réalisation</Text>
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={handleImageUpload}
-              >
-                <Text style={styles.uploadButtonText}>Ajouter des images</Text>
-              </TouchableOpacity>
-
-              {uploads.map((upload, i) => {
-                const isValid = upload.likes > 0 && upload.shares > 0 && upload.image;
-
-                return (
-                  <View key={i} style={styles.uploadContainer}>
-                    <View style={styles.imageContainer}>
-                      <Image
-                        source={{ uri: upload.image }}
-                        style={styles.uploadImage}
-                        resizeMode="cover"
-                      />
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDeleteUpload(i)}
-                      >
-                        <Icon name="delete" size={20} color="#FF6B2E" />
-                      </TouchableOpacity>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Intérêts</Text>
+                <View style={styles.interestsContainer}>
+                  {deal.interests ? (
+                    <View style={styles.interestTag}>
+                      <Text style={styles.interestText}>{deal.interests}</Text>
                     </View>
+                  ) : (
+                    <Text style={styles.noInterestText}>Aucun intérêt défini</Text>
+                  )}
+                </View>
+              </View>
 
-                    <View style={styles.statsContainer}>
-                      <View style={styles.statInput}>
-                        <Text style={styles.statLabel}>Nombre de likes</Text>
-                        <TextInput
-                          style={styles.statInputField}
-                          keyboardType="numeric"
-                          value={upload.likes.toString()}
-                          onChangeText={(value) => handleUpdateField(i, "likes", parseInt(value) || 0)}
+              <View style={styles.infoContainer}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Type de Contenu</Text>
+                  <Text style={styles.infoValue}>{deal.typeOfContent || "Non spécifié"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Date de Validité</Text>
+                  <Text style={styles.infoValue}>{deal.validUntil || "Non spécifiée"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Conditions</Text>
+                  <Text style={styles.infoValue}>{deal.conditions || "Aucune condition"}</Text>
+                </View>
+              </View>
+
+            </View>
+
+            <View style={styles.statusSection}>
+              <Text style={styles.statusTitle}>État de la candidature</Text>
+              <ProgressRibbon currentStep={getCurrentStep()} status={status} />
+            </View>
+
+            {status === "Accepté" && (
+              <View style={styles.proofsSection}>
+                <Text style={styles.proofsTitle}>Preuves de réalisation</Text>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={handleImageUpload}
+                >
+                  <Text style={styles.uploadButtonText}>Ajouter des images</Text>
+                </TouchableOpacity>
+
+                {uploads.map((upload, i) => {
+                  const isValid = upload.likes > 0 && upload.shares > 0 && upload.image;
+
+                  return (
+                    <View key={i} style={styles.uploadContainer}>
+                      <View style={styles.imageContainer}>
+                        <Image
+                          source={{ uri: upload.image }}
+                          style={styles.uploadImage}
+                          resizeMode="cover"
                         />
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteUpload(i)}
+                        >
+                          <Icon name="delete" size={20} color="#FF6B2E" />
+                        </TouchableOpacity>
                       </View>
-                      <View style={styles.statInput}>
-                        <Text style={styles.statLabel}>Nombre de partages</Text>
-                        <TextInput
-                          style={styles.statInputField}
-                          keyboardType="numeric"
-                          value={upload.shares.toString()}
-                          onChangeText={(value) => handleUpdateField(i, "shares", parseInt(value) || 0)}
-                        />
+
+                      <View style={styles.statsContainer}>
+                        <View style={styles.statInput}>
+                          <Text style={styles.statLabel}>Nombre de likes</Text>
+                          <TextInput
+                            style={styles.statInputField}
+                            keyboardType="numeric"
+                            value={upload.likes.toString()}
+                            onChangeText={(value) => handleUpdateField(i, "likes", parseInt(value) || 0)}
+                          />
+                        </View>
+                        <View style={styles.statInput}>
+                          <Text style={styles.statLabel}>Nombre de partages</Text>
+                          <TextInput
+                            style={styles.statInputField}
+                            keyboardType="numeric"
+                            value={upload.shares.toString()}
+                            onChangeText={(value) => handleUpdateField(i, "shares", parseInt(value) || 0)}
+                          />
+                        </View>
                       </View>
-                    </View>
 
-                    {!isValid && !upload.isValidated && (
-                      <Text style={styles.validationError}>
-                        Veuillez remplir tous les champs pour valider.
-                      </Text>
-                    )}
-
-                    {isValid && !upload.isValidated && (
-                      <TouchableOpacity
-                        style={[styles.validateButton, upload.loading && styles.disabledButton]}
-                        onPress={() => handleValidateUpload(i)}
-                        disabled={upload.loading}
-                      >
-                        <Text style={styles.validateButtonText}>
-                          {upload.loading ? "Validation..." : "Valider cet upload"}
+                      {!isValid && !upload.isValidated && (
+                        <Text style={styles.validationError}>
+                          Veuillez remplir tous les champs pour valider.
                         </Text>
-                      </TouchableOpacity>
-                    )}
+                      )}
 
-                    {upload.isValidated && (
-                      <Text style={styles.validatedText}>Upload validé ✅</Text>
-                    )}
+                      {isValid && !upload.isValidated && (
+                        <TouchableOpacity
+                          style={[styles.validateButton, upload.loading && styles.disabledButton]}
+                          onPress={() => handleValidateUpload(i)}
+                          disabled={upload.loading}
+                        >
+                          <Text style={styles.validateButtonText}>
+                            {upload.loading ? "Validation..." : "Valider cet upload"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {upload.isValidated && (
+                        <Text style={styles.validatedText}>Upload validé ✅</Text>
+                      )}
+                    </View>
+                  );
+                })}
+
+                <TouchableOpacity
+                  style={[styles.doneButton, loading && styles.disabledButton]}
+                  onPress={handleMarkAsDone}
+                  disabled={loading}
+                >
+                  <Text style={styles.doneButtonText}>
+                    {loading ? "Envoi..." : "Marquer comme terminé"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {status === "Approbation" && (
+              <View style={styles.approvalSection}>
+                <TouchableOpacity
+                  style={styles.pendingButton}
+                  disabled
+                >
+                  <Text style={styles.pendingButtonText}>En attente d'approbation</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.undoButton}
+                  onPress={handleUndoMarkAsDone}
+                  disabled={loading}
+                >
+                  <Text style={styles.undoButtonText}>
+                    {loading ? "Retour..." : "Marquer comme non terminé"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {status === "Refusé" && (
+              <View style={styles.refusedSection}>
+                <TouchableOpacity
+                  style={styles.refusedButton}
+                  disabled
+                >
+                  <Text style={styles.refusedButtonText}>Candidature Refusée</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {status === "Terminé" && candidature?.influreview && (
+              <View style={styles.reviewSection}>
+                <Text style={styles.reviewTitle}>Avis laissé</Text>
+                <Text style={styles.reviewText}>"{candidature.influreview.comment}"</Text>
+              </View>
+            )}
+
+            {status === "Terminé" && (
+              <View style={styles.reviewButtonSection}>
+                <TouchableOpacity
+                  style={[styles.reviewButton, hasReviewed && styles.disabledButton]}
+                  onPress={() => !hasReviewed && navigation.navigate('ReviewInfluenceur', { dealId: deal.id })}
+                  disabled={hasReviewed}
+                >
+                  <Text style={styles.reviewButtonText}>
+                    {hasReviewed ? "Déjà évalué" : "Noter le commerçant"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.timelineSection}>
+              <Text style={styles.timelineTitle}>Historique</Text>
+              <View style={styles.timelineContainer}>
+                {timeline.map((event, index) => (
+                  <View key={index} style={styles.timelineItem}>
+                    <View style={styles.timelineDot} />
+                    <View style={styles.timelineContent}>
+                      <Text style={styles.timelineText}>{event.text}</Text>
+                      <Text style={styles.timelineDate}>{event.date}</Text>
+                    </View>
                   </View>
-                );
-              })}
-
+                ))}
+              </View>
+            </View>
+            <View style={styles.buttonContainer}>
               <TouchableOpacity
-                style={[styles.doneButton, loading && styles.disabledButton]}
-                onPress={handleMarkAsDone}
-                disabled={loading}
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
               >
-                <Text style={styles.doneButtonText}>
-                  {loading ? "Envoi..." : "Marquer comme terminé"}
+                <Text style={styles.backButtonText}>RETOUR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.applyButton, alreadyApplied && styles.disabledButton]}
+                onPress={handleCandidature}
+                disabled={alreadyApplied}
+              >
+                <Text style={styles.applyButtonText}>
+                  {alreadyApplied ? "Candidature envoyée" : "EXÉCUTER"}
                 </Text>
               </TouchableOpacity>
-            </View>
-          )}
-
-          {status === "Approbation" && (
-            <View style={styles.approvalSection}>
-              <TouchableOpacity
-                style={styles.pendingButton}
-                disabled
-              >
-                <Text style={styles.pendingButtonText}>En attente d'approbation</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.undoButton}
-                onPress={handleUndoMarkAsDone}
-                disabled={loading}
-              >
-                <Text style={styles.undoButtonText}>
-                  {loading ? "Retour..." : "Marquer comme non terminé"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {status === "Refusé" && (
-            <View style={styles.refusedSection}>
-              <TouchableOpacity
-                style={styles.refusedButton}
-                disabled
-              >
-                <Text style={styles.refusedButtonText}>Candidature Refusée</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {status === "Terminé" && candidature?.influreview && (
-            <View style={styles.reviewSection}>
-              <Text style={styles.reviewTitle}>Avis laissé</Text>
-              <Text style={styles.reviewText}>"{candidature.influreview.comment}"</Text>
-            </View>
-          )}
-
-          {status === "Terminé" && (
-            <View style={styles.reviewButtonSection}>
-              <TouchableOpacity
-                style={[styles.reviewButton, hasReviewed && styles.disabledButton]}
-                onPress={() => !hasReviewed && navigation.navigate('ReviewInfluenceur', { dealId: deal.id })}
-                disabled={hasReviewed}
-              >
-                <Text style={styles.reviewButtonText}>
-                  {hasReviewed ? "Déjà évalué" : "Noter le commerçant"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.timelineSection}>
-            <Text style={styles.timelineTitle}>Historique</Text>
-            <View style={styles.timelineContainer}>
-              {timeline.map((event, index) => (
-                <View key={index} style={styles.timelineItem}>
-                  <View style={styles.timelineDot} />
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineText}>{event.text}</Text>
-                    <Text style={styles.timelineDate}>{event.date}</Text>
-                  </View>
-                </View>
-              ))}
             </View>
           </View>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.backButtonText}>RETOUR</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.applyButton, alreadyApplied && styles.disabledButton]}
-              onPress={handleCandidature}
-              disabled={alreadyApplied}
-            >
-              <Text style={styles.applyButtonText}>
-                {alreadyApplied ? "Candidature envoyée" : "EXÉCUTER"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-      <BottomNavbar />
-    </View>
+        </ScrollView>
+        <BottomNavbar />
+      </View>
+    </SafeAreaView>
   );
 };
 

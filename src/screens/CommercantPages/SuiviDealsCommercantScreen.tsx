@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  StyleSheet
+  StyleSheet,
+  SafeAreaView
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { collection, doc, getDoc, onSnapshot, updateDoc, where, query } from "firebase/firestore";
@@ -16,6 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { Navbar } from "./Navbar";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
+import { sendNotificationToToken } from "../../hooks/sendNotifications";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -75,6 +77,15 @@ export const SuiviDealsCommercantScreen = () => {
         const data = snap.data();
         data.candidatures[index].status = newStatus;
         await updateDoc(dealRef, { candidatures: data.candidatures });
+        const userSnap = await getDoc(doc(db, "users", data.candidatures[index].influenceurId));
+        const userToken = userSnap.exists() ? userSnap.data()?.expoPushToken : null;
+        if (userToken) {
+          await sendNotificationToToken(userToken,
+            "Du nouveau pour votre candidature !",
+            `Rendez vous vite sur l'application pour plus de détails`,
+            { screen: "DealDetailsInfluenceur", dealId: dealId }
+          );
+        }
       }
       setLoadingIndex(null);
     } catch (err) {
@@ -104,132 +115,134 @@ export const SuiviDealsCommercantScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Suivi Candidatures</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-            <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-            <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.filtersContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-        >
-          {filters.map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => setSelectedFilter(item)}
-              style={[
-                styles.filterButton,
-                selectedFilter === item ? styles.activeFilter : styles.inactiveFilter
-              ]}
-            >
-              <Text style={[
-                styles.filterText,
-                selectedFilter === item ? styles.activeFilterText : styles.inactiveFilterText
-              ]}>{item}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Suivi Candidatures</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+              <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+              <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-      <ScrollView
-        style={styles.contentScroll}
-        contentContainerStyle={styles.contentScrollContent}
-      >
-        {filtered.length === 0 ? (
-          <Text style={styles.emptyText}>Aucune candidature trouvée</Text>
-        ) : (
-          filtered.map((c, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => navigation.navigate("DealsDetailsCommercant", {
-                dealId: c.dealId,
-                influenceurId: c.influenceurId
-              })}
-            >
-              <View style={styles.card}>
-                <Image source={{ uri: c.dealInfo?.imageUrl }} style={styles.cardImage} />
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardTitle}>{c.dealInfo?.title}</Text>
-                  <Text style={styles.cardDescription} numberOfLines={1}>{c.dealInfo?.description}</Text>
-                  <View style={styles.cardActions}>
-                    <View style={styles.actionButtons}>
-                      {c.status === "Envoyé" ? (
-                        <>
-                          <TouchableOpacity
-                            style={{
-                              backgroundColor: '#FF6B2E',
-                              padding: 8,
-                              borderRadius: 999,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                            onPress={async () => {
-                              const chatId = [c.dealInfo?.merchantId, c.influenceurId].sort().join("");
-                              const userRef = doc(db, "users", c.influenceurId);
-                              const userSnap = await getDoc(userRef);
-                              if (userSnap.exists()) {
-                                const userData = userSnap.data();
-                                navigation.navigate('Chat', {
-                                  chatId: chatId,
-                                  pseudonyme: userData.pseudonyme || "",
-                                  photoURL: userData.photoURL || "",
-                                  receiverId: userData.uid,
-                                  role: userData.role,
-                                });
-                              }
-                            }}
-                          >
-                            <Feather name="message-circle" size={16} color="white" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.acceptButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(c.dealId, c.candidatureIndex, "Accepté");
-                            }}
-                            disabled={loadingIndex === c.candidatureIndex}
-                          >
-                            <Text style={styles.buttonText}>
-                              {loadingIndex === c.candidatureIndex ? "..." : "Accepter"}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.refuseButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(c.dealId, c.candidatureIndex, "Refusé");
-                            }}
-                            disabled={loadingIndex === c.candidatureIndex}
-                          >
-                            <Text style={styles.buttonText}>
-                              {loadingIndex === c.candidatureIndex ? "..." : "Refuser"}
-                            </Text>
-                          </TouchableOpacity>
-                        </>
-                      ) : (
-                        <Text style={styles.statusBadge}>{getLabel(c.status)}</Text>
-                      )}
+        <View style={styles.filtersContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScrollContent}
+          >
+            {filters.map((item) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setSelectedFilter(item)}
+                style={[
+                  styles.filterButton,
+                  selectedFilter === item ? styles.activeFilter : styles.inactiveFilter
+                ]}
+              >
+                <Text style={[
+                  styles.filterText,
+                  selectedFilter === item ? styles.activeFilterText : styles.inactiveFilterText
+                ]}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <ScrollView
+          style={styles.contentScroll}
+          contentContainerStyle={styles.contentScrollContent}
+        >
+          {filtered.length === 0 ? (
+            <Text style={styles.emptyText}>Aucune candidature trouvée</Text>
+          ) : (
+            filtered.map((c, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => navigation.navigate("DealsDetailsCommercant", {
+                  dealId: c.dealId,
+                  influenceurId: c.influenceurId
+                })}
+              >
+                <View style={styles.card}>
+                  <Image source={{ uri: c.dealInfo?.imageUrl }} style={styles.cardImage} />
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardTitle}>{c.dealInfo?.title}</Text>
+                    <Text style={styles.cardDescription} numberOfLines={1}>{c.dealInfo?.description}</Text>
+                    <View style={styles.cardActions}>
+                      <View style={styles.actionButtons}>
+                        {c.status === "Envoyé" ? (
+                          <>
+                            <TouchableOpacity
+                              style={{
+                                backgroundColor: '#FF6B2E',
+                                padding: 8,
+                                borderRadius: 999,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              onPress={async () => {
+                                const chatId = [c.dealInfo?.merchantId, c.influenceurId].sort().join("");
+                                const userRef = doc(db, "users", c.influenceurId);
+                                const userSnap = await getDoc(userRef);
+                                if (userSnap.exists()) {
+                                  const userData = userSnap.data();
+                                  navigation.navigate('Chat', {
+                                    chatId: chatId,
+                                    pseudonyme: userData.pseudonyme || "",
+                                    photoURL: userData.photoURL || "",
+                                    receiverId: userData.uid,
+                                    role: userData.role,
+                                  });
+                                }
+                              }}
+                            >
+                              <Feather name="message-circle" size={16} color="white" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.acceptButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(c.dealId, c.candidatureIndex, "Accepté");
+                              }}
+                              disabled={loadingIndex === c.candidatureIndex}
+                            >
+                              <Text style={styles.buttonText}>
+                                {loadingIndex === c.candidatureIndex ? "..." : "Accepter"}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.refuseButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(c.dealId, c.candidatureIndex, "Refusé");
+                              }}
+                              disabled={loadingIndex === c.candidatureIndex}
+                            >
+                              <Text style={styles.buttonText}>
+                                {loadingIndex === c.candidatureIndex ? "..." : "Refuser"}
+                              </Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : (
+                          <Text style={styles.statusBadge}>{getLabel(c.status)}</Text>
+                        )}
+                      </View>
+                      <Text style={styles.detailsButton}>→</Text>
                     </View>
-                    <Text style={styles.detailsButton}>→</Text>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
-      <Navbar />
-    </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+        <Navbar />
+      </View>
+    </SafeAreaView>
   );
 }
 

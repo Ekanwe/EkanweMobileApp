@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, FlatList
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, FlatList,
+  SafeAreaView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../../firebase/firebase';
 import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { RootStackParamList } from '../../types/navigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {Navbar} from './Navbar';
+import { Navbar } from './Navbar';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'DealsCommercant'>;
 
@@ -73,7 +74,7 @@ export const DealsPageCommercantScreen = () => {
   const filteredDeals = React.useMemo(() => {
     console.log('Searching deals with query:', searchQuery);
     console.log('Total deals:', deals.length);
-    
+
     if (!searchQuery.trim()) {
       return deals;
     }
@@ -92,7 +93,7 @@ export const DealsPageCommercantScreen = () => {
   const filteredInfluencers = React.useMemo(() => {
     console.log('Searching influencers with query:', searchQuery);
     console.log('Total influencers:', influencers.length);
-    
+
     if (!searchQuery.trim()) {
       return influencers;
     }
@@ -117,115 +118,118 @@ export const DealsPageCommercantScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <Text style={styles.title}>Deals</Text>
-          <View style={styles.headerRight}>
-            <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-              <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-              <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-            </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Deals</Text>
+            <View style={styles.headerRight}>
+              <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+                <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+                <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Image source={require('../../assets/loupe.png')} style={styles.searchIcon} />
-            <TextInput 
-              placeholder="Recherche" 
-              placeholderTextColor="#999" 
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+              <Image source={require('../../assets/loupe.png')} style={styles.searchIcon} />
+              <TextInput
+                placeholder="Recherche"
+                placeholderTextColor="#999"
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
           </View>
-        </View>
 
-        <View style={styles.filterContainer}>
-          {['Deals', 'Influenceurs'].map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => setSelectedFilter(item as 'Deals' | 'Influenceurs')}
-              style={[styles.filterButton, selectedFilter === item && styles.filterButtonActive]}
-            >
-              <Text style={selectedFilter === item ? styles.filterTextActive : styles.filterText}>
-                {item}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          <View style={styles.filterContainer}>
+            {['Deals', 'Influenceurs'].map((item) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setSelectedFilter(item as 'Deals' | 'Influenceurs')}
+                style={[styles.filterButton, selectedFilter === item && styles.filterButtonActive]}
+              >
+                <Text style={selectedFilter === item ? styles.filterTextActive : styles.filterText}>
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {selectedFilter === 'Deals' ? (
-          <>
-            <TouchableOpacity style={styles.createDealButton} onPress={() => navigation.navigate('DealsCreation')}>
-              <Text style={styles.createDealText}>Faire un deal</Text>
-            </TouchableOpacity>
+          {selectedFilter === 'Deals' ? (
+            <>
+              <TouchableOpacity style={styles.createDealButton} onPress={() => navigation.navigate('DealsCreation')}>
+                <Text style={styles.createDealText}>Faire un deal</Text>
+              </TouchableOpacity>
 
-            {filteredDeals.length === 0 ? (
-              <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
-            ) : (
-              filteredDeals.map((deal) => (
-                <TouchableOpacity
-                  key={deal.id}
-                  onPress={() => navigation.navigate('DealsDetailsCommercant', { 
-                    dealId: deal.id,
-                    influenceurId: auth.currentUser?.uid || ''
-                  })}
-                  style={styles.card}
-                >
-                  <Image source={{ uri: deal.imageUrl || 'https://via.placeholder.com/150' }} style={styles.dealImage} />
-                  <View style={styles.cardContent}>
-                    <Text style={styles.dealTitle}>{deal.title || 'Sans titre'}</Text>
-                    <Text style={styles.dealDesc}>{deal.description || '-'}</Text>
-                    {renderStars(calculateAverageRating(deal.candidatures))}
-                    <View style={styles.button}>
-                      <Text style={styles.buttonText}>Voir plus</Text>
+              {filteredDeals.length === 0 ? (
+                <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
+              ) : (
+                filteredDeals.map((deal) => (
+                  <TouchableOpacity
+                    key={deal.id}
+                    onPress={() => navigation.navigate('DealsDetailsCommercant', {
+                      dealId: deal.id,
+                      influenceurId: auth.currentUser?.uid || ''
+                    })}
+                    style={styles.card}
+                  >
+                    <Image source={{ uri: deal.imageUrl || 'https://via.placeholder.com/150' }} style={styles.dealImage} />
+                    <View style={styles.cardContent}>
+                      <Text style={styles.dealTitle}>{deal.title || 'Sans titre'}</Text>
+                      <Text style={styles.dealDesc}>{deal.description || '-'}</Text>
+                      {renderStars(calculateAverageRating(deal.candidatures))}
+                      <View style={styles.button}>
+                        <Text style={styles.buttonText}>Voir plus</Text>
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </>
-        ) : (
-          <>
-            {filteredInfluencers.length === 0 ? (
-              <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
-            ) : (
-              filteredInfluencers.map((inf) => (
-                <TouchableOpacity
-                  key={inf.id}
-                  onPress={() => navigation.navigate('ProfilPublic', { userId: inf.id })}
-                  style={styles.card}
-                >
-                  <Image source={{ uri: inf.photoURL || 'https://via.placeholder.com/150' }} style={styles.dealImage} />
-                  <View style={styles.cardContent}>
-                    <Text style={styles.dealTitle}>{inf.pseudonyme || 'Influenceur'}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </>
-        )}
-      </ScrollView>
-      <Navbar />
-    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </>
+          ) : (
+            <>
+              {filteredInfluencers.length === 0 ? (
+                <Text style={styles.noResultsText}>Aucun résultat trouvé</Text>
+              ) : (
+                filteredInfluencers.map((inf) => (
+                  <TouchableOpacity
+                    key={inf.id}
+                    onPress={() => navigation.navigate('ProfilPublic', { userId: inf.id })}
+                    style={styles.card}
+                  >
+                    <Image source={{ uri: inf.photoURL || 'https://via.placeholder.com/150' }} style={styles.dealImage} />
+                    <View style={styles.cardContent}>
+                      <Text style={styles.dealTitle}>{inf.pseudonyme || 'Influenceur'}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </>
+          )}
+        </ScrollView>
+        <Navbar />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: '#F5F5E7',
     paddingTop: 40,
     paddingBottom: 70,
   },
-  loadingContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: '#F5F5E7' 
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5E7'
   },
   loadingText: { fontSize: 16, color: '#14210F' },
   header: { padding: 16, flexDirection: 'row', justifyContent: 'space-between' },
@@ -255,10 +259,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: '#14210F',
   },
-  filterContainer: { 
+  filterContainer: {
     flexDirection: 'row',
-    justifyContent: 'center', 
-    marginBottom: 16, 
+    justifyContent: 'center',
+    marginBottom: 16,
     marginTop: 20,
 
   },

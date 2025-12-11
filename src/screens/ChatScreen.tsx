@@ -21,7 +21,7 @@ import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from 'firebase/firesto
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { sendNotification, sendNotificationToToken } from '../hooks/sendNotifications';
+import { sendNotificationToToken } from '../hooks/sendNotifications';
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -127,6 +127,26 @@ export const ChatScreen = () => {
       await updateDoc(chatRef, {
         messages: arrayUnion(newMsg),
       });
+      const receiverRef = doc(db, "users", receiverId);
+      const receiverSnap = await getDoc(receiverRef);
+      if (receiverSnap.exists()) {
+        const receiverToken = receiverSnap.data()?.expoPushToken;
+        if (receiverToken) {
+          await sendNotificationToToken(
+            receiverToken,
+            `${auth.currentUser?.displayName || "Nouveau message"}`,
+            newMessage || "📷 Image envoyée",
+            {
+              screen: "Chat",
+              chatId,
+              receiverId: auth.currentUser?.uid,
+              pseudonyme: auth.currentUser?.displayName || "Utilisateur",
+              photoURL: auth.currentUser?.photoURL || "",
+              role: role === "influenceur" ? "commerçant" : "influenceur",
+            }
+          );
+        }
+      }
     } catch (err) {
       console.error('Erreur lors de l’envoi du message :', err);
     }

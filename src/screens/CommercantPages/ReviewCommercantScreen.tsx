@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Modal, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Modal, Alert, StyleSheet, SafeAreaView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { auth, db } from '../../firebase/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -107,74 +107,78 @@ export const ReviewCommercantScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#14210F" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Évaluation</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-            <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-            <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatar} />
-          <View>
-            <Text style={styles.username}>{user?.pseudonyme || user?.prenom || 'Nom'}</Text>
-            <Text style={styles.prestationType}>Prestation : {(deal?.typeOfContent || []).join(', ')}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <ScrollView style={styles.container}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#14210F" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Évaluation</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+              <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+              <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {ratings.map((rating, index) => (
-          <View key={index} style={styles.ratingCard}>
-            <Text style={styles.ratingCategory}>{rating.category}</Text>
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <TouchableOpacity key={s} onPress={() => handleRatingChange(index, s)}>
-                  <Ionicons
-                    name="star"
-                    size={28}
-                    color={s <= rating.score ? '#FF6B2E' : '#D1D5DB'}
-                    style={styles.star}
-                  />
-                </TouchableOpacity>
-              ))}
+        <View style={styles.content}>
+          <View style={styles.userInfo}>
+            <View style={styles.avatar} />
+            <View>
+              <Text style={styles.username}>{user?.pseudonyme || user?.prenom || 'Nom'}</Text>
+              <Text style={styles.prestationType}>Prestation : {(deal?.typeOfContent || []).join(', ')}</Text>
             </View>
           </View>
-        ))}
 
-        <Text style={styles.commentLabel}>Commentaire</Text>
-        <TextInput
-          value={comment}
-          onChangeText={setComment}
-          placeholder="Partagez votre expérience..."
-          style={styles.commentInput}
-          multiline
-          numberOfLines={4}
-        />
+          {ratings.map((rating, index) => (
+            <View key={index} style={styles.ratingCard}>
+              <Text style={styles.ratingCategory}>{rating.category}</Text>
+              <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <TouchableOpacity key={s} onPress={() => handleRatingChange(index, s)}>
+                    <Ionicons
+                      name="star"
+                      size={28}
+                      color={s <= rating.score ? '#FF6B2E' : '#D1D5DB'}
+                      style={styles.star}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
 
-        <TouchableOpacity
-          onPress={handleSubmit}
-          style={styles.submitButton}
-        >
-          <Text style={styles.submitButtonText}>Soumettre l'évaluation</Text>
-        </TouchableOpacity>
-      </View>
+          <Text style={styles.commentLabel}>Commentaire</Text>
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
+            placeholder="Partagez votre expérience..."
+            style={styles.commentInput}
+            multiline
+            numberOfLines={4}
+          />
 
-      <ThankYouModal visible={modalVisible} onClose={() => {
-        setModalVisible(false);
-        navigation.navigate('DealsCommercant');
-      }} />
-    </ScrollView>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={styles.submitButton}
+          >
+            <Text style={styles.submitButtonText}>Soumettre l'évaluation</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ThankYouModal visible={modalVisible} onClose={() => {
+          setModalVisible(false);
+          navigation.navigate('DealsCommercant');
+        }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  SafeAreaView,
+  KeyboardAvoidingView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
@@ -378,114 +380,122 @@ export const ProfileInfluenceurScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mon Profil</Text>
-        <TouchableOpacity
-          onPress={async () => {
-            const userRef = doc(db, "users", auth.currentUser?.uid || "");
-            const snap = await getDoc(userRef);
-            const role = snap.data()?.role;
-            navigation.navigate(role === "influenceur" ? 'DealsInfluenceur' : 'DealsCommercant');
-          }}
-        >
-          <Image
-            source={require('../../assets/ekanwesign.png')}
-            style={styles.headerLogo}
-          />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Mon Profil</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                const userRef = doc(db, "users", auth.currentUser?.uid || "");
+                const snap = await getDoc(userRef);
+                const role = snap.data()?.role;
+                navigation.navigate(role === "influenceur" ? 'DealsInfluenceur' : 'DealsCommercant');
+              }}
+            >
+              <Image
+                source={require('../../assets/ekanwesign.png')}
+                style={styles.headerLogo}
+              />
+            </TouchableOpacity>
+          </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.profileCard}>
-          <View style={styles.imageContainer}>
-            <View style={styles.profileImageContainer}>
-              {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={styles.placeholderImage}>
-                  <Ionicons name="camera" size={30} color="#FF6B2E" />
+          <ScrollView style={styles.content}>
+            <View style={styles.profileCard}>
+              <View style={styles.imageContainer}>
+                <View style={styles.profileImageContainer}>
+                  {profileImage ? (
+                    <Image
+                      source={{ uri: profileImage }}
+                      style={styles.profileImage}
+                    />
+                  ) : (
+                    <View style={styles.placeholderImage}>
+                      <Ionicons name="camera" size={30} color="#FF6B2E" />
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            <View style={styles.imageButtonsContainer}>
-              <TouchableOpacity
-                style={styles.cameraButton}
-                onPress={handleImageClick}
-              >
-                <Ionicons name="camera" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.galleryButton}
-                onPress={handleGalleryClick}
-              >
-                <Ionicons name="images" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.formContainer}>
-            <InputField label="Pseudonyme" value={pseudonyme} onChange={setPseudonyme} />
-            <InputField label="Prénom" value={prenom} onChange={setPrenom} />
-            <InputField label="Nom" value={nom} onChange={setNom} />
-            <InputField label="Date de Naissance" value={dateNaissance} onChange={setDateNaissance} type="date" />
-            <InputField label="Téléphone" value={phone} onChange={setPhone} />
-            <InputField
-              label="Instagram"
-              value={instagram}
-              onChange={setInstagram}
-              icon="https://cdn-icons-png.flaticon.com/512/174/174855.png"
-            />
-            <InputField
-              label="TikTok"
-              value={tiktok}
-              onChange={setTiktok}
-              icon="https://cdn-icons-png.flaticon.com/512/3046/3046121.png"
-            />
-            <InputField label="Lien de Portfolio" value={portfolioLink} onChange={setPortfolioLink} />
-            <TextAreaField label="Bio" value={bio} onChange={setBio} />
-
-            {message && (
-              <View style={[
-                styles.messageContainer,
-                message.includes("succès") ? styles.successMessage : styles.errorMessage
-              ]}>
-                <Text style={styles.messageText}>{message}</Text>
+                <View style={styles.imageButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.cameraButton}
+                    onPress={handleImageClick}
+                  >
+                    <Ionicons name="camera" size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.galleryButton}
+                    onPress={handleGalleryClick}
+                  >
+                    <Ionicons name="images" size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            )}
 
-            <TouchableOpacity
-              style={[styles.saveButton, loading && styles.disabledButton]}
-              onPress={handleSave}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Sauvegarder</Text>
-              )}
-            </TouchableOpacity>
+              <View style={styles.formContainer}>
+                <InputField label="Pseudonyme" value={pseudonyme} onChange={setPseudonyme} />
+                <InputField label="Prénom" value={prenom} onChange={setPrenom} />
+                <InputField label="Nom" value={nom} onChange={setNom} />
+                <InputField label="Date de Naissance" value={dateNaissance} onChange={setDateNaissance} type="date" />
+                <InputField label="Téléphone" value={phone} onChange={setPhone} />
+                <InputField
+                  label="Instagram"
+                  value={instagram}
+                  onChange={setInstagram}
+                  icon="https://cdn-icons-png.flaticon.com/512/174/174855.png"
+                />
+                <InputField
+                  label="TikTok"
+                  value={tiktok}
+                  onChange={setTiktok}
+                  icon="https://cdn-icons-png.flaticon.com/512/3046/3046121.png"
+                />
+                <InputField label="Lien de Portfolio" value={portfolioLink} onChange={setPortfolioLink} />
+                <TextAreaField label="Bio" value={bio} onChange={setBio} />
 
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-            >
-              <Text style={styles.logoutButtonText}>Déconnexion</Text>
-            </TouchableOpacity>
+                {message && (
+                  <View style={[
+                    styles.messageContainer,
+                    message.includes("succès") ? styles.successMessage : styles.errorMessage
+                  ]}>
+                    <Text style={styles.messageText}>{message}</Text>
+                  </View>
+                )}
 
-            <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
-              <Text style={styles.deleteButtonText}>Supprimer mon compte</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, loading && styles.disabledButton]}
+                  onPress={handleSave}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.buttonText}>Sauvegarder</Text>
+                  )}
+                </TouchableOpacity>
 
-          </View>
+                <TouchableOpacity
+                  style={styles.logoutButton}
+                  onPress={handleLogout}
+                >
+                  <Text style={styles.logoutButtonText}>Déconnexion</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+                  <Text style={styles.deleteButtonText}>Supprimer mon compte</Text>
+                </TouchableOpacity>
+
+              </View>
+            </View>
+          </ScrollView>
+
+          <BottomNavbar />
         </View>
-      </ScrollView>
-
-      <BottomNavbar />
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

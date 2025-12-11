@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet } from "react-native";
+import { View, Text, Image, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, SafeAreaView } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { doc, getDoc, updateDoc, getDocs, collection } from "firebase/firestore";
-import { db, auth } from "../../firebase/firebase";
-import { sendNotification, sendNotificationToToken } from "../../hooks/sendNotifications";
+import { db } from "../../firebase/firebase";
+import { sendNotificationToToken } from "../../hooks/sendNotifications";
 import { Navbar } from "./Navbar";
 import { Ionicons } from "@expo/vector-icons";
 import { RootStackParamList } from "../../types/navigation";
-import profile from "../../assets/profile.png";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -102,16 +101,6 @@ export const DealCandidatesPageCommercant = () => {
       );
 
       await updateDoc(ref, { candidatures: updated });
-      await sendNotification({
-        toUserId: id,
-        message: `Votre candidature a été ${status === "Accepté" ? "acceptée" : "refusée"}.`,
-        relatedDealId: dealId,
-        targetRoute: 'DealsDetailsInfluenceur',
-        fromUserId: auth.currentUser?.uid || "",
-        type: "status_update",
-        dealId: dealId,
-        receiverId: id,
-      });
       const userSnap = await getDoc(doc(db, "users", id));
       const userToken = userSnap.exists() ? userSnap.data()?.expoPushToken : null;
 
@@ -119,9 +108,9 @@ export const DealCandidatesPageCommercant = () => {
         await sendNotificationToToken(userToken,
           "Mise à jour de votre candidature",
           `Votre candidature a été ${status === "Accepté" ? "acceptée" : "refusée"}.`,
+          { screen: "DealDetailsInfluenceur", dealId: dealId }
         );
       }
-
       setCandidates(prev => prev.map(c => (c.influenceurId === id ? { ...c, status } : c)));
     } catch (e) {
       console.error("updateStatus error:", e);
@@ -146,110 +135,113 @@ export const DealCandidatesPageCommercant = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#14210F" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Candidats</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#14210F" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Candidats</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+              <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+              <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-            <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-            <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      {deal && (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Image
-            source={{ uri: deal.imageUrl || Image.resolveAssetSource(profile).uri }}
-            style={styles.dealImage}
-            resizeMode="cover"
-          />
+        {deal && (
+          <ScrollView contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}>
+            <Image
+              source={{ uri: deal.imageUrl || require('../../assets/profile.png') }}
+              style={styles.dealImage}
+              resizeMode="cover"
+            />
 
-          <View style={styles.contentContainer}>
-            <Text style={styles.title}>{deal.title}</Text>
-            <Text style={styles.location}>{deal.location || "Non défini"}</Text>
-            <Text style={styles.description}>{deal.description}</Text>
+            <View style={styles.contentContainer}>
+              <Text style={styles.title}>{deal.title}</Text>
+              <Text style={styles.location}>{deal.location || "Non défini"}</Text>
+              <Text style={styles.description}>{deal.description}</Text>
 
-            <Text style={styles.candidatesTitle}>Candidats</Text>
-            {candidates.length === 0 ? (
-              <Text style={styles.noCandidates}>Aucun candidat pour ce deal.</Text>
-            ) : (
-              candidates.map((cand) => (
-                <TouchableOpacity
-                  key={cand.influenceurId}
-                  onPress={() => navigation.navigate("ProfilPublic", { userId: cand.influenceurId })}
-                  style={styles.candidateCard}
-                >
-                  <View style={styles.candidateContent}>
-                    <View style={styles.candidateInfo}>
-                      <Image
-                        source={{ uri: cand.userInfo?.photoURL || Image.resolveAssetSource(profile).uri }}
-                        style={styles.avatar}
-                      />
-                      <View>
-                        <Text style={styles.username}>{cand.userInfo?.pseudonyme}</Text>
-                        <View style={styles.starsContainer}>{renderStars(Math.round(averageRatings[cand.influenceurId] || 0))}</View>
+              <Text style={styles.candidatesTitle}>Candidats</Text>
+              {candidates.length === 0 ? (
+                <Text style={styles.noCandidates}>Aucun candidat pour ce deal.</Text>
+              ) : (
+                candidates.map((cand) => (
+                  <TouchableOpacity
+                    key={cand.influenceurId}
+                    onPress={() => navigation.navigate("ProfilPublic", { userId: cand.influenceurId })}
+                    style={styles.candidateCard}
+                  >
+                    <View style={styles.candidateContent}>
+                      <View style={styles.candidateInfo}>
+                        <Image
+                          source={{ uri: cand.userInfo?.photoURL || require('../../assets/profile.png') }}
+                          style={styles.avatar}
+                        />
+                        <View>
+                          <Text style={styles.username}>{cand.userInfo?.pseudonyme}</Text>
+                          <View style={styles.starsContainer}>{renderStars(Math.round(averageRatings[cand.influenceurId] || 0))}</View>
+                        </View>
+                      </View>
+                      <View style={styles.buttonsContainer}>
+                        {cand.status === "Envoyé" && (
+                          <>
+                            <TouchableOpacity
+                              style={styles.acceptButton}
+                              onPress={() => updateStatus(cand.influenceurId, "Accepté")}
+                              disabled={buttonLoading === cand.influenceurId + "Accepté"}
+                            >
+                              <Text style={styles.acceptButtonText}>
+                                {buttonLoading === cand.influenceurId + "Accepté" ? "..." : "ACCEPTER"}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.refuseButton}
+                              onPress={() => updateStatus(cand.influenceurId, "Refusé")}
+                              disabled={buttonLoading === cand.influenceurId + "Refusé"}
+                            >
+                              <Text style={styles.refuseButtonText}>
+                                {buttonLoading === cand.influenceurId + "Refusé" ? "..." : "REFUSER"}
+                              </Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+                        {cand.status === "Accepté" && (
+                          <>
+                            <Text style={styles.statusText}>EN COURS</Text>
+                          </>
+                        )}
+                        {cand.status === "Refusé" && (
+                          <>
+                            <Text style={styles.refusedText}>REFUSÉ</Text>
+                            <TouchableOpacity
+                              style={styles.acceptButton}
+                              onPress={() => updateStatus(cand.influenceurId, "Accepté")}
+                              disabled={buttonLoading === cand.influenceurId + "Accepté"}
+                            >
+                              <Text style={styles.acceptButtonText}>
+                                {buttonLoading === cand.influenceurId + "Accepté" ? "..." : "Vous avez changé d'avis? Accepté le deal ;)"}
+                              </Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
                       </View>
                     </View>
-                    <View style={styles.buttonsContainer}>
-                      {cand.status === "Envoyé" && (
-                        <>
-                          <TouchableOpacity
-                            style={styles.acceptButton}
-                            onPress={() => updateStatus(cand.influenceurId, "Accepté")}
-                            disabled={buttonLoading === cand.influenceurId + "Accepté"}
-                          >
-                            <Text style={styles.acceptButtonText}>
-                              {buttonLoading === cand.influenceurId + "Accepté" ? "..." : "ACCEPTER"}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.refuseButton}
-                            onPress={() => updateStatus(cand.influenceurId, "Refusé")}
-                            disabled={buttonLoading === cand.influenceurId + "Refusé"}
-                          >
-                            <Text style={styles.refuseButtonText}>
-                              {buttonLoading === cand.influenceurId + "Refusé" ? "..." : "REFUSER"}
-                            </Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                      {cand.status === "Accepté" && (
-                        <>
-                          <Text style={styles.statusText}>EN COURS</Text>
-                        </>
-                      )}
-                      {cand.status === "Refusé" && (
-                        <>
-                          <Text style={styles.refusedText}>REFUSÉ</Text>
-                          <TouchableOpacity
-                            style={styles.acceptButton}
-                            onPress={() => updateStatus(cand.influenceurId, "Accepté")}
-                            disabled={buttonLoading === cand.influenceurId + "Accepté"}
-                          >
-                            <Text style={styles.acceptButtonText}>
-                              {buttonLoading === cand.influenceurId + "Accepté" ? "..." : "Vous avez changé d'avis? Accepté le deal ;)"}
-                            </Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        </ScrollView>
-      )}
-      <Navbar />
-    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        )}
+        <Navbar />
+      </View>
+    </SafeAreaView>
   );
 }
 

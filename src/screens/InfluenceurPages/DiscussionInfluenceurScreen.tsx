@@ -8,6 +8,9 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -78,8 +81,8 @@ export const DiscussionInfluenceurScreen = () => {
           const messages = chatDoc.exists() ? chatDoc.data()?.messages || [] : [];
           const lastMessage = messages.length > 0 ? messages[messages.length - 1].text : "";
 
-          return { 
-            ...item, 
+          return {
+            ...item,
             user,
             lastMessage
           };
@@ -136,102 +139,112 @@ export const DiscussionInfluenceurScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Discussions</Text>
-        <Image
-          source={require('../../assets/ekanwesign.png')}
-          style={styles.headerLogo}
-        />
-      </View>
-
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Image
-            source={require('../../assets/loupe.png')}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Rechercher une conversation"
-            placeholderTextColor="#666666"
-          />
-          <Image
-            source={require('../../assets/menu.png')}
-            style={styles.menuIcon}
-          />
-        </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setAddMode(!addMode)}
-        >
-          <Text style={styles.addButtonText}>
-            {addMode ? "Annuler" : "Ajouter"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.chatList}>
-        {addMode ? (
-          <View style={styles.addUserContainer}>
-            {/* AddUser component will be implemented separately */}
-            <Text style={styles.addUserText}>Composant AddUser à implémenter</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Discussions</Text>
+            <Image
+              source={require('../../assets/ekanwesign.png')}
+              style={styles.headerLogo}
+            />
           </View>
-        ) : filteredChats.length > 0 ? (
-          filteredChats.map((chat: any) => (
+
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputContainer}>
+              <Image
+                source={require('../../assets/loupe.png')}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                value={input}
+                onChangeText={setInput}
+                placeholder="Rechercher une conversation"
+                placeholderTextColor="#666666"
+              />
+              <Image
+                source={require('../../assets/menu.png')}
+                style={styles.menuIcon}
+              />
+            </View>
             <TouchableOpacity
-              key={chat.chatId}
-              style={styles.chatItem}
-              onPress={() => handleSelect(chat)}
+              style={styles.addButton}
+              onPress={() => setAddMode(!addMode)}
             >
-              <View style={styles.chatContent}>
-                <Image
-                  source={chat.user?.photoURL ? { uri: chat.user.photoURL } : require('../../assets/profile.png')}
-                  style={styles.avatar}
-                />
-                <View style={styles.chatInfo}>
-                  <View style={styles.chatHeader}>
-                    <Text style={styles.chatName}>
-                      {chat.user?.pseudonyme || "Utilisateur"}
-                    </Text>
-                    <Text style={styles.chatTime}>
-                      {new Date(chat.updatedAt).toLocaleTimeString("fr-FR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
-                  </View>
-                  <View style={styles.chatFooter}>
-                    <Text
-                      style={[
-                        styles.chatMessage,
-                        chat.read ? styles.readMessage : styles.unreadMessage
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {chat.lastMessage || "Commencez la conversation..."}
-                    </Text>
-                    {!chat.read && (
-                      <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadCount}>1</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
+              <Text style={styles.addButtonText}>
+                {addMode ? "Annuler" : "Ajouter"}
+              </Text>
             </TouchableOpacity>
-          ))
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Aucune conversation</Text>
           </View>
-        )}
-      </ScrollView>
 
-      <BottomNavbar />
-    </View>
+          <ScrollView style={styles.chatList}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            showsVerticalScrollIndicator={false}>
+            {addMode ? (
+              <View style={styles.addUserContainer}>
+                {/* AddUser component will be implemented separately */}
+                <Text style={styles.addUserText}>Composant AddUser à implémenter</Text>
+              </View>
+            ) : filteredChats.length > 0 ? (
+              filteredChats.map((chat: any) => (
+                <TouchableOpacity
+                  key={chat.chatId}
+                  style={styles.chatItem}
+                  onPress={() => handleSelect(chat)}
+                >
+                  <View style={styles.chatContent}>
+                    <Image
+                      source={chat.user?.photoURL ? { uri: chat.user.photoURL } : require('../../assets/profile.png')}
+                      style={styles.avatar}
+                    />
+                    <View style={styles.chatInfo}>
+                      <View style={styles.chatHeader}>
+                        <Text style={styles.chatName}>
+                          {chat.user?.pseudonyme || "Utilisateur"}
+                        </Text>
+                        <Text style={styles.chatTime}>
+                          {new Date(chat.updatedAt).toLocaleTimeString("fr-FR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </View>
+                      <View style={styles.chatFooter}>
+                        <Text
+                          style={[
+                            styles.chatMessage,
+                            chat.read ? styles.readMessage : styles.unreadMessage
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {chat.lastMessage || "Commencez la conversation..."}
+                        </Text>
+                        {!chat.read && (
+                          <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadCount}>1</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Aucune conversation</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <BottomNavbar />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

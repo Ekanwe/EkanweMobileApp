@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Linking, SafeAreaView } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -7,7 +7,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { BottomNavbar } from './BottomNavbar';
 import { auth, db } from '../../firebase/firebase';
 import { doc, getDoc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
-import { sendNotification, sendNotificationToToken } from '../../hooks/sendNotifications';
+import { sendNotificationToToken } from '../../hooks/sendNotifications';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type DealsSeeMoreRouteProp = RouteProp<RootStackParamList, 'DealsSeeMoreInfluenceur'>;
@@ -79,16 +79,6 @@ export const DealsSeeMoreInfluenceurScreen = () => {
 
       await updateDoc(dealRef, { candidatures: arrayUnion(newCandidature) });
 
-      await sendNotification({
-        toUserId: deal.merchantId,
-        fromUserId: user.uid,
-        message: "Un influenceur a postulé à votre deal !",
-        type: "application",
-        relatedDealId: deal.id,
-        targetRoute: 'DealCandidatesCommercant',
-        dealId: deal.id,
-        receiverId: deal.merchantId,
-      });
       const userSnap = await getDoc(doc(db, "users", deal.merchantId));
       const userToken = userSnap.exists() ? userSnap.data()?.expoPushToken : null;
 
@@ -96,6 +86,7 @@ export const DealsSeeMoreInfluenceurScreen = () => {
         await sendNotificationToToken(userToken,
           "Nouvelle candidature !",
           `Un influenceur a postulé à votre deal !`,
+          { screen: "DealsCandidates", dealId: deal.id },
         );
       }
 
@@ -170,113 +161,114 @@ export const DealsSeeMoreInfluenceurScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={24} color="#FF6B2E" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Deals</Text>
-        </View>
-
-        <View style={styles.dealCard}>
-          <View style={styles.imageContainer}>
-            <Image
-              source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
-              style={styles.dealImage}
-              resizeMode="cover"
-            />
-            <TouchableOpacity style={styles.saveButton} onPress={handleToggleSave}>
-              <Image
-                source={saved ? require('../../assets/fullsave.png') : require('../../assets/save.png')}
-                style={styles.saveIcon}
-              />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <View style={styles.container}>
+        <ScrollView>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Icon name="arrow-left" size={24} color="#FF6B2E" />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>Deals</Text>
           </View>
 
-          <View style={styles.dealContent}>
-            <View style={styles.titleContainer}>
-              <View>
-                <Text style={styles.dealTitle}>{deal.title}</Text>
-                <View style={styles.locationContainer}>
-                  <Icon name="map-marker" size={16} color="#FF6B2E" />
-                  <View>
-                    {deal.locationName && (
-                      <Text style={styles.locationName}>{deal.locationName}</Text>
-                    )}
-                    {deal.locationCoords && (
-                      <TouchableOpacity
-                        onPress={() => Linking.openURL(`https://www.google.com/maps?q=${deal.locationCoords.lat},${deal.locationCoords.lng}`)}
-                      >
-                        <Text style={styles.locationLink}>Voir sur Google Maps</Text>
-                      </TouchableOpacity>
-                    )}
+          <View style={styles.dealCard}>
+            <View style={styles.imageContainer}>
+              <Image
+                source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
+                style={styles.dealImage}
+                resizeMode="cover"
+              />
+              <TouchableOpacity style={styles.saveButton} onPress={handleToggleSave}>
+                <Image
+                  source={saved ? require('../../assets/fullsave.png') : require('../../assets/save.png')}
+                  style={styles.saveIcon}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.dealContent}>
+              <View style={styles.titleContainer}>
+                <View>
+                  <Text style={styles.dealTitle}>{deal.title}</Text>
+                  <View style={styles.locationContainer}>
+                    <Icon name="map-marker" size={16} color="#FF6B2E" />
+                    <View>
+                      {deal.locationName && (
+                        <Text style={styles.locationName}>{deal.locationName}</Text>
+                      )}
+                      {deal.locationCoords && (
+                        <TouchableOpacity
+                          onPress={() => Linking.openURL(`https://www.google.com/maps?q=${deal.locationCoords.lat},${deal.locationCoords.lng}`)}
+                        >
+                          <Text style={styles.locationLink}>Voir sur Google Maps</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
               </View>
-              <Text style={styles.dealId}>#{deal.id}</Text>
-            </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{deal.description}</Text>
-            </View>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.description}>{deal.description}</Text>
+              </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Intérêts</Text>
-              <View style={styles.interestsContainer}>
-                {deal.interests ? (
-                  (typeof deal.interests === 'string' ? 
-                    deal.interests.split(/(?=[A-Z])/).filter(Boolean) : 
-                    Array.isArray(deal.interests) ? deal.interests : []
-                  ).map((interest: string, index: number) => (
-                    <View key={index} style={styles.interestTag}>
-                      <Text style={styles.interestText}>{interest}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.noInterestText}>Aucun intérêt défini</Text>
-                )}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Intérêts</Text>
+                <View style={styles.interestsContainer}>
+                  {deal.interests ? (
+                    (typeof deal.interests === 'string' ?
+                      deal.interests.split(/(?=[A-Z])/).filter(Boolean) :
+                      Array.isArray(deal.interests) ? deal.interests : []
+                    ).map((interest: string, index: number) => (
+                      <View key={index} style={styles.interestTag}>
+                        <Text style={styles.interestText}>{interest}</Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.noInterestText}>Aucun intérêt défini</Text>
+                  )}
+                </View>
               </View>
-            </View>
 
-            <View style={styles.infoContainer}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Type de Contenu</Text>
-                <Text style={styles.infoValue}>{deal.typeOfContent || "Non spécifié"}</Text>
+              <View style={styles.infoContainer}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Type de Contenu</Text>
+                  <Text style={styles.infoValue}>{deal.typeOfContent || "Non spécifié"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Date de Validité</Text>
+                  <Text style={styles.infoValue}>{deal.validUntil || "Non spécifiée"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Conditions</Text>
+                  <Text style={styles.infoValue}>{deal.conditions || "Aucune condition"}</Text>
+                </View>
               </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Date de Validité</Text>
-                <Text style={styles.infoValue}>{deal.validUntil || "Non spécifiée"}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Conditions</Text>
-                <Text style={styles.infoValue}>{deal.conditions || "Aucune condition"}</Text>
-              </View>
-            </View>
 
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.navigate('DealsInfluenceur')}
-              >
-                <Text style={styles.backButtonText}>RETOUR</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.applyButton, alreadyApplied && styles.disabledButton]}
-                onPress={handleCandidature}
-                disabled={alreadyApplied}
-              >
-                <Text style={styles.applyButtonText}>
-                  {alreadyApplied ? "Candidature envoyée" : "EXÉCUTER"}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => navigation.navigate('DealsInfluenceur')}
+                >
+                  <Text style={styles.backButtonText}>RETOUR</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.applyButton, alreadyApplied && styles.disabledButton]}
+                  onPress={handleCandidature}
+                  disabled={alreadyApplied}
+                >
+                  <Text style={styles.applyButtonText}>
+                    {alreadyApplied ? "Candidature envoyée" : "EXÉCUTER"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
-      <BottomNavbar />
-    </View>
+        </ScrollView>
+        <BottomNavbar />
+      </View>
+    </SafeAreaView>
   );
 };
 

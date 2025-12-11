@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, ActivityIndicator, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
@@ -87,61 +87,71 @@ export const DiscussionCommercantScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Discussions</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-          <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" />
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder="Rechercher une conversation"
-            style={styles.searchInput}
-          />
-        </View>
-      </View>
-
-      <View style={styles.mainContainer}>
-        <ScrollView style={styles.chatList}>
-          {filteredChats.length > 0 ? (
-            filteredChats.map((chat: any) => (
-              <TouchableOpacity
-                key={chat.chatId}
-                onPress={() => handleSelect(chat)}
-                style={styles.chatItem}
-              >
-                <View style={styles.chatContent}>
-                  <Image
-                    //source={{ uri: chat.user?.photoURL || 'https://via.placeholder.com/150' }}
-                    source={chat.user?.photoURL ? { uri: chat.user?.photoURL } : require('../../assets/profile.png')}
-                    style={styles.avatar}
-                  />
-                  <View style={styles.chatInfo}>
-                    <View style={styles.chatHeader}>
-                      <Text style={styles.username} numberOfLines={1}>{chat.user?.pseudonyme || 'Utilisateur'}</Text>
-                      <Text style={styles.time}>{new Date(chat.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                    </View>
-                    <Text style={[styles.lastMessage, !chat.read && styles.unreadMessage]} numberOfLines={1}>
-                      {chat.lastMessage || 'Commencez la conversation...'}
-                    </Text>
-                  </View>
-                </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <Text style={styles.title}>Discussions</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+                <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
               </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Aucune conversation pour le moment</Text>
             </View>
-          )}
-        </ScrollView>
-        <Navbar/>
-      </View>
-    </View>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#999" />
+              <TextInput
+                value={input}
+                onChangeText={setInput}
+                placeholder="Rechercher une conversation"
+                style={styles.searchInput}
+              />
+            </View>
+          </View>
+
+          <View style={styles.mainContainer}>
+            <ScrollView style={styles.chatList}
+              contentContainerStyle={{ paddingBottom: 120 }}
+              showsVerticalScrollIndicator={false}>
+              {filteredChats.length > 0 ? (
+                filteredChats.map((chat: any) => (
+                  <TouchableOpacity
+                    key={chat.chatId}
+                    onPress={() => handleSelect(chat)}
+                    style={styles.chatItem}
+                  >
+                    <View style={styles.chatContent}>
+                      <Image
+                        //source={{ uri: chat.user?.photoURL || 'https://via.placeholder.com/150' }}
+                        source={chat.user?.photoURL ? { uri: chat.user?.photoURL } : require('../../assets/profile.png')}
+                        style={styles.avatar}
+                      />
+                      <View style={styles.chatInfo}>
+                        <View style={styles.chatHeader}>
+                          <Text style={styles.username} numberOfLines={1}>{chat.user?.pseudonyme || 'Utilisateur'}</Text>
+                          <Text style={styles.time}>{new Date(chat.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                        </View>
+                        <Text style={[styles.lastMessage, !chat.read && styles.unreadMessage]} numberOfLines={1}>
+                          {chat.lastMessage || 'Commencez la conversation...'}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>Aucune conversation pour le moment</Text>
+                </View>
+              )}
+            </ScrollView>
+            <Navbar />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -253,8 +263,8 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#666'
   },
-  icon:{
+  icon: {
     width: 24,
-    height:24,
+    height: 24,
   }
 });

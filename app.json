@@ -3,11 +3,11 @@
     "name": "Ekanwe",
     "slug": "EkanweMobile",
     "displayName": "Ekanwe",
-    "version": "1.0.4",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/icone_ekanwe.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "ekanwe",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -62,7 +62,15 @@
       ],
       "expo-web-browser",
       "expo-asset",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icone_ekanwe.png",
+          "color": "#ffffff",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "extra": {
       "eas": {

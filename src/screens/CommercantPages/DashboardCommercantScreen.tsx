@@ -6,7 +6,8 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  StyleSheet
+  StyleSheet,
+  SafeAreaView
 } from "react-native";
 import { db, auth } from "../../firebase/firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -127,94 +128,98 @@ export const DashboardCommercantScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-            <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-            <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Deals terminés</Text>
-          <Text style={styles.statValue}>{stats.totalCompletedDeals}</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Note Moyenne</Text>
-          <Text style={styles.statValue}>{stats.averageRating} / 5</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Total Likes</Text>
-          <Text style={styles.statValue}>{stats.totalLikes}</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Total Partages</Text>
-          <Text style={styles.statValue}>{stats.totalShares}</Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.reviewsContainer}>
-        <View style={styles.reviewsHeader}>
-          <Text style={styles.reviewsTitle}>Avis des influenceurs</Text>
-          <MoreHorizontal size={20} color="#1A2C24" />
-        </View>
-
-        {reviews.length > 0 ? (
-          reviews.map((review, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => navigation.navigate("DealsDetailsCommercant", {
-                dealId: review.dealId,
-                influenceurId: review.influenceurId,
-              })}
-              style={styles.reviewCard}
-            >
-              <View style={styles.reviewHeader}>
-                <Image
-                  source={{ uri: review.avatar || `https://ui-avatars.com/api/?name=${review.username}` }}
-                  style={styles.avatar}
-                />
-                <View style={styles.reviewContent}>
-                  <Text style={styles.username}>{review.username}</Text>
-                  <View style={styles.starsContainer}>{renderStars(review.rating)}</View>
-                  <Text style={styles.comment}>{review.comment}</Text>
-                </View>
-                <TouchableOpacity onPress={() => toggleSave(index)}>
-                  <Image
-                    source={
-                      savedItems[index]
-                        ? require("../../assets/fullsave.png")
-                        : require("../../assets/save.png")
-                    }
-                    style={styles.saveIcon}
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.reviewStats}>
-                <View style={styles.statRow}>
-                  <Heart size={16} color="#14210F" />
-                  <Text style={styles.statText}>{review.likes}</Text>
-                </View>
-                <View style={styles.statRow}>
-                  <Share size={16} color="#14210F" />
-                  <Text style={styles.statText}>{review.shares}</Text>
-                </View>
-              </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Dashboard</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+              <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
             </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.noReviews}>Aucun avis pour l'instant.</Text>
-        )}
-      </ScrollView>
+            <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+              <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-      <Navbar />
-    </View>
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Deals terminés</Text>
+            <Text style={styles.statValue}>{stats.totalCompletedDeals}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Note Moyenne</Text>
+            <Text style={styles.statValue}>{stats.averageRating} / 5</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Total Likes</Text>
+            <Text style={styles.statValue}>{stats.totalLikes}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Total Partages</Text>
+            <Text style={styles.statValue}>{stats.totalShares}</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.reviewsContainer}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.reviewsTitle}>Avis des influenceurs</Text>
+            <MoreHorizontal size={20} color="#1A2C24" />
+          </View>
+
+          {reviews.length > 0 ? (
+            reviews.map((review, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => navigation.navigate("DealsDetailsCommercant", {
+                  dealId: review.dealId,
+                  influenceurId: review.influenceurId,
+                })}
+                style={styles.reviewCard}
+              >
+                <View style={styles.reviewHeader}>
+                  <Image
+                    source={{ uri: review.avatar || `https://ui-avatars.com/api/?name=${review.username}` }}
+                    style={styles.avatar}
+                  />
+                  <View style={styles.reviewContent}>
+                    <Text style={styles.username}>{review.username}</Text>
+                    <View style={styles.starsContainer}>{renderStars(review.rating)}</View>
+                    <Text style={styles.comment}>{review.comment}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => toggleSave(index)}>
+                    <Image
+                      source={
+                        savedItems[index]
+                          ? require("../../assets/fullsave.png")
+                          : require("../../assets/save.png")
+                      }
+                      style={styles.saveIcon}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.reviewStats}>
+                  <View style={styles.statRow}>
+                    <Heart size={16} color="#14210F" />
+                    <Text style={styles.statText}>{review.likes}</Text>
+                  </View>
+                  <View style={styles.statRow}>
+                    <Share size={16} color="#14210F" />
+                    <Text style={styles.statText}>{review.shares}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={styles.noReviews}>Aucun avis pour l'instant.</Text>
+          )}
+        </ScrollView>
+
+        <Navbar />
+      </View>
+    </SafeAreaView >
   );
 }
 

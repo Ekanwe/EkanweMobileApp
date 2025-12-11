@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Image, ActivityIndicator, Alert, Platform, Modal
+    View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Image, ActivityIndicator, Alert, Platform, Modal,
+    KeyboardAvoidingView,
+    SafeAreaView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { auth, db } from '../../firebase/firebase';
 import {
-    collection, doc, getDoc, updateDoc, deleteDoc, serverTimestamp
+    doc, getDoc, updateDoc, deleteDoc, serverTimestamp
 } from 'firebase/firestore';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MapView, { Marker, MapPressEvent } from 'react-native-maps';
@@ -85,11 +87,8 @@ export const DealsEditScreen = () => {
                     try {
                         setSelectedDate(new Date(data.validUntil));
                     } catch (e) {
-                        // pas bloquant
                     }
                 }
-
-                // demander localisation device pour carte
                 let { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
                     let location = await Location.getCurrentPositionAsync({});
@@ -256,158 +255,191 @@ export const DealsEditScreen = () => {
     }
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#14210F" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+            >
+                <ScrollView style={styles.container}
+                    contentContainerStyle={{ paddingBottom: 120 }}
+                    showsVerticalScrollIndicator={false}>
+                    <View style={styles.header}>
+                        <View style={styles.headerLeft}>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                                <Ionicons name="arrow-back" size={24} color="#14210F" />
+                            </TouchableOpacity>
+                            <Text style={styles.title}>Modifier le Deal</Text>
+                        </View>
+                        <View style={styles.headerRight}>
+                            <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+                                <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+                                <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
+                        <Image source={{ uri: imageUri || 'https://via.placeholder.com/600x200' }} style={styles.image} />
+                        <Text style={styles.imageText}>📸 Changer l'image</Text>
                     </TouchableOpacity>
-                    <Text style={styles.title}>Modifier le Deal</Text>
-                </View>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-                        <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+
+                    <Text style={styles.label}>Titre</Text>
+                    <View style={{ position: 'relative' }}>
+                        <TextInput
+                            style={[styles.input, { paddingRight: 50 }]}
+                            value={title}
+                            onChangeText={text => {
+                                const truncated = text.slice(0, 60);
+                                setTitle(truncated);
+                            }}
+                            placeholder="Titre du deal"
+                        />
+
+                        <Text
+                            style={{
+                                position: 'absolute',
+                                right: 10,
+                                top: '50%',
+                                transform: [{ translateY: -8 }],
+                                fontSize: 10,
+                                color: '#999'
+                            }}
+                        >
+                            {title.length}/60
+                        </Text>
+                    </View>
+
+                    <Text style={styles.label}>Description</Text>
+                    <TextInput
+                        style={[styles.input, styles.multiline]}
+                        value={description}
+                        onChangeText={setDescription}
+                        placeholder="Décrivez le deal"
+                        multiline
+                    />
+
+                    {/* -------- INTÉRÊTS -------- */}
+                    <Text style={styles.label}>Intérêts</Text>
+                    <View style={styles.tagContainer}>
+                        {availableInterests.map(tag => (
+                            <TouchableOpacity
+                                key={tag}
+                                style={[styles.tag, selectedInterests.includes(tag) && styles.tagSelected]}
+                                onPress={() => toggleSelection(tag, selectedInterests, setSelectedInterests)}
+                            >
+                                <Text style={selectedInterests.includes(tag) ? styles.tagTextSelected : styles.tagText}>{tag}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {/* -------- TYPE DE CONTENU -------- */}
+                    <Text style={styles.label}>Type de contenu</Text>
+                    <View style={styles.tagContainer}>
+                        {availableTypes.map(tag => (
+                            <TouchableOpacity
+                                key={tag}
+                                style={[styles.tag, selectedTypes.includes(tag) && styles.tagSelected]}
+                                onPress={() => toggleSelection(tag, selectedTypes, setSelectedTypes)}
+                            >
+                                <Text style={selectedTypes.includes(tag) ? styles.tagTextSelected : styles.tagText}>{tag}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <Text style={styles.label}>Date de validité</Text>
+                    <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
+                        <Text style={validUntil ? styles.dateText : styles.datePlaceholder}>{validUntil || 'Sélectionner une date'}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-                        <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-                    </TouchableOpacity>
-                </View>
-            </View>
 
-            <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
-                <Image source={{ uri: imageUri || 'https://via.placeholder.com/600x200' }} style={styles.image} />
-                <Text style={styles.imageText}>📸 Changer l'image</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Titre</Text>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Titre du deal" />
-
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-                style={[styles.input, styles.multiline]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Décrivez le deal"
-                multiline
-            />
-
-            {/* -------- INTÉRÊTS -------- */}
-            <Text style={styles.label}>Intérêts</Text>
-            <View style={styles.tagContainer}>
-                {availableInterests.map(tag => (
-                    <TouchableOpacity
-                        key={tag}
-                        style={[styles.tag, selectedInterests.includes(tag) && styles.tagSelected]}
-                        onPress={() => toggleSelection(tag, selectedInterests, setSelectedInterests)}
-                    >
-                        <Text style={selectedInterests.includes(tag) ? styles.tagTextSelected : styles.tagText}>{tag}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            {/* -------- TYPE DE CONTENU -------- */}
-            <Text style={styles.label}>Type de contenu</Text>
-            <View style={styles.tagContainer}>
-                {availableTypes.map(tag => (
-                    <TouchableOpacity
-                        key={tag}
-                        style={[styles.tag, selectedTypes.includes(tag) && styles.tagSelected]}
-                        onPress={() => toggleSelection(tag, selectedTypes, setSelectedTypes)}
-                    >
-                        <Text style={selectedTypes.includes(tag) ? styles.tagTextSelected : styles.tagText}>{tag}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            <Text style={styles.label}>Date de validité</Text>
-            <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
-                <Text style={validUntil ? styles.dateText : styles.datePlaceholder}>{validUntil || 'Sélectionner une date'}</Text>
-            </TouchableOpacity>
-
-            {Platform.OS === 'ios' ? (
-                <Modal visible={showDatePicker} transparent={true} animationType="slide">
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <View style={styles.modalHeader}>
-                                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                    <Text style={styles.modalButton}>Annuler</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={() => { setValidUntil(format(selectedDate, 'yyyy-MM-dd')); setShowDatePicker(false); }}>
-                                    <Text style={styles.modalButton}>OK</Text>
-                                </TouchableOpacity>
+                    {Platform.OS === 'ios' ? (
+                        <Modal visible={showDatePicker} transparent={true} animationType="slide">
+                            <View style={styles.modalContainer}>
+                                <View style={styles.modalContent}>
+                                    <View style={styles.modalHeader}>
+                                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                            <Text style={styles.modalButton}>Annuler</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => { setValidUntil(format(selectedDate, 'yyyy-MM-dd')); setShowDatePicker(false); }}>
+                                            <Text style={styles.modalButton}>OK</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <DateTimePicker
+                                        value={selectedDate}
+                                        mode="date"
+                                        display="default"
+                                        onChange={(e, d) => { if (d) setSelectedDate(d); }}
+                                        minimumDate={new Date()}
+                                        locale="fr-FR"
+                                        style={styles.datePicker}
+                                    />
+                                </View>
                             </View>
+                        </Modal>
+                    ) : (
+                        showDatePicker && (
                             <DateTimePicker
                                 value={selectedDate}
                                 mode="date"
                                 display="default"
-                                onChange={(e, d) => { if (d) setSelectedDate(d); }}
+                                onChange={(e, d) => { if (d) { setSelectedDate(d); setValidUntil(format(d, 'yyyy-MM-dd')); } setShowDatePicker(false); }}
                                 minimumDate={new Date()}
                                 locale="fr-FR"
-                                style={styles.datePicker}
                             />
-                        </View>
-                    </View>
-                </Modal>
-            ) : (
-                showDatePicker && (
-                    <DateTimePicker
-                        value={selectedDate}
-                        mode="date"
-                        display="default"
-                        onChange={(e, d) => { if (d) { setSelectedDate(d); setValidUntil(format(d, 'yyyy-MM-dd')); } setShowDatePicker(false); }}
-                        minimumDate={new Date()}
-                        locale="fr-FR"
-                    />
-                )
-            )}
-
-            <Text style={styles.label}>Conditions</Text>
-            <TextInput
-                style={[styles.input, styles.multiline]}
-                value={conditions}
-                onChangeText={setConditions}
-                placeholder="Conditions du deal"
-                multiline
-            />
-
-            <Text style={styles.label}>Localisation</Text>
-            <View style={styles.searchContainer}>
-                <TextInput
-                    style={styles.searchInput}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholder="Rechercher une adresse..."
-                    onSubmitEditing={handleSearch}
-                />
-                <TouchableOpacity style={styles.searchButton} onPress={handleSearch} disabled={isSearching}>
-                    {isSearching ? <ActivityIndicator size="small" color="#FF6B2E" /> : <Ionicons name="search" size={24} color="#FF6B2E" />}
-                </TouchableOpacity>
-            </View>
-
-            <View style={styles.mapContainer}>
-                <MapView style={styles.map} region={region} onRegionChangeComplete={setRegion} onPress={handleMapPress}>
-                    {position && (
-                        <Marker coordinate={{ latitude: position.lat, longitude: position.lng }} title="Position choisie" />
+                        )
                     )}
-                </MapView>
-            </View>
 
-            <View style={styles.tagContainer}>
-                {position ? (
-                    <Text style={styles.locationText}>{locationName || `Latitude: ${position.lat.toFixed(5)} / Longitude: ${position.lng.toFixed(5)}`}</Text>
-                ) : (
-                    <Text style={styles.locationText}>Touchez la carte ou recherchez une adresse</Text>
-                )}
-            </View>
+                    <Text style={styles.label}>Conditions</Text>
+                    <TextInput
+                        style={[styles.input, styles.multiline]}
+                        value={conditions}
+                        onChangeText={setConditions}
+                        placeholder="Conditions du deal"
+                        multiline
+                    />
 
-            <TouchableOpacity onPress={handleUpdate} disabled={loading} style={styles.submit}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Mettre à jour</Text>}
-            </TouchableOpacity>
+                    <Text style={styles.label}>Localisation</Text>
+                    <View style={styles.searchContainer}>
+                        <TextInput
+                            style={styles.searchInput}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            placeholder="Rechercher une adresse..."
+                            onSubmitEditing={handleSearch}
+                        />
+                        <TouchableOpacity style={styles.searchButton} onPress={handleSearch} disabled={isSearching}>
+                            {isSearching ? <ActivityIndicator size="small" color="#FF6B2E" /> : <Ionicons name="search" size={24} color="#FF6B2E" />}
+                        </TouchableOpacity>
+                    </View>
 
-            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                <Text style={styles.deleteText}>Supprimer</Text>
-            </TouchableOpacity>
-        </ScrollView>
+                    <View style={styles.mapContainer}>
+                        <MapView style={styles.map} region={region} onRegionChangeComplete={setRegion} onPress={handleMapPress}>
+                            {position && (
+                                <Marker coordinate={{ latitude: position.lat, longitude: position.lng }} title="Position choisie" />
+                            )}
+                        </MapView>
+                    </View>
+
+                    <View style={styles.tagContainer}>
+                        {position ? (
+                            <Text style={styles.locationText}>{locationName || `Latitude: ${position.lat.toFixed(5)} / Longitude: ${position.lng.toFixed(5)}`}</Text>
+                        ) : (
+                            <Text style={styles.locationText}>Touchez la carte ou recherchez une adresse</Text>
+                        )}
+                    </View>
+
+                    <TouchableOpacity onPress={handleUpdate} disabled={loading} style={styles.submit}>
+                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Mettre à jour</Text>}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                        <Text style={styles.deleteText}>Supprimer</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 };
 

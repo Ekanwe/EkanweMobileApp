@@ -42,87 +42,69 @@ import { NotificationsCommercantScreen } from './src/screens/CommercantPages/Not
 import { ChatScreen } from './src/screens/ChatScreen';
 import { ReviewCommercantScreen } from './src/screens/CommercantPages/ReviewCommercantScreen';
 import { ReviewInfluenceurScreen } from './src/screens/InfluenceurPages/ReviewInfluenceurScreen';
-import { ProfilPublicScreen } from './src/screens/CommercantPages/ProfilPublicScreen';
 import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import { Platform } from 'react-native';
-import { doc, setDoc } from 'firebase/firestore';
+import { ProfilPublicScreen } from './src/screens/CommercantPages/ProfilPublicScreen';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './src/firebase/firebase';
+import { usePushNotifications } from './usePushNotifications';
+import { DealsEditScreen } from './src/screens/CommercantPages/DealsEditScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-async function registerForPushNotificationsAsync(): Promise<string | undefined> {
-  let token;
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      return;
-    }
-
-    token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log('Expo Push Token:', token);
-  }
-
-  if (Platform.OS === 'ios') {
-    await Notifications.setNotificationCategoryAsync('default', []);
-  }
-
-  return token;
-}
-
 export default function App() {
+  const { expoPushToken, notification } = usePushNotifications();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   useEffect(() => {
-    const registerForPushNotificationsAsync = async () => {
-      if (!Device.isDevice) {
-        return;
-      }
+    const user = auth.currentUser;
+    if (user && expoPushToken) {
+      setDoc(doc(db, "users", user.uid), { expoPushToken }, { merge: true });
+    }
+  }, [expoPushToken]);
+  useEffect(() => {
+    const handleNotification = (data: any) => {
+      const screen = data.screen as keyof RootStackParamList | undefined;
 
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      const params: Record<string, any> = {};
+      if (data.dealId) params.dealId = data.dealId;
+      if (data.userId) params.userId = data.userId;
+      if (data.influenceurId) params.influenceurId = data.influenceurId;
+      if (data.chatId) params.chatId = data.chatId;
+      if (data.receiverId) params.receiverId = data.receiverId;
 
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
+      const tryNavigate = () => {
+        if (!navigationRef.current?.isReady()) {
+          setTimeout(tryNavigate, 50);
+          return;
+        }
 
-      if (finalStatus !== 'granted') {
-        return;
-      }
+        if (screen) {
+          navigationRef.current.navigate(
+            screen as never,
+            Object.keys(params).length ? (params as never) : undefined
+          );
+        }
+      };
 
-      const token = (await Notifications.getExpoPushTokenAsync()).data;
-      console.log('Expo Push Token:', token);
-
-      if (Platform.OS === 'ios') {
-        await Notifications.setNotificationCategoryAsync('default', []);
-      }
-
-      if (auth.currentUser) {
-        await setDoc(
-          doc(db, 'users', auth.currentUser.uid),
-          { expoPushToken: token },
-          { merge: true }
-        );
-      }
+      tryNavigate();
     };
 
-    registerForPushNotificationsAsync();
-
-    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-      if (navigationRef.current) {
-        navigationRef.current.navigate('Splash');
+    Notifications.getLastNotificationResponseAsync().then(response => {
+      if (response) {
+        const data = response.notification.request.content.data || {};
+        handleNotification(data);
       }
     });
 
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data || {};
+        handleNotification(data);
+      }
+    );
+
     return () => subscription.remove();
   }, []);
+
 
   return (
     <UserProvider>
@@ -168,8 +150,10 @@ export default function App() {
           <Stack.Screen name='ReviewInfluenceur' component={ReviewInfluenceurScreen} />
           <Stack.Screen name='ProfilPublic' component={ProfilPublicScreen} />
           <Stack.Screen name='Chat' component={ChatScreen} />
+          <Stack.Screen name="DealsEdit" component={DealsEditScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </UserProvider>
   );
 }
+

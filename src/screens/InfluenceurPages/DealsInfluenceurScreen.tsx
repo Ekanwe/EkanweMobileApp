@@ -8,11 +8,12 @@ import {
   TextInput,
   Image,
   Modal,
+  SafeAreaView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { collection, query, doc, updateDoc, setDoc, arrayUnion, getDoc, getDocs, where } from "firebase/firestore";
 import { db, auth } from "../../firebase/firebase";
-import { sendNotification, sendNotificationToToken } from "../../hooks/sendNotifications";
+import { sendNotificationToToken } from "../../hooks/sendNotifications";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/navigation";
 import { BottomNavbar } from "./BottomNavbar";
@@ -77,7 +78,7 @@ export const DealsInfluenceurScreen = () => {
       const dealsRef = collection(db, "deals");
       const q = query(dealsRef, where("status", "==", "active"));
       const querySnapshot = await getDocs(q);
-      
+
       const dealsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -95,9 +96,10 @@ export const DealsInfluenceurScreen = () => {
     if (!user) return;
 
     const ref = doc(db, 'users', user.uid);
-    const data = { savedDeals: savedDeals.includes(dealId) 
-      ? savedDeals.filter(id => id !== dealId)
-      : [...savedDeals, dealId]
+    const data = {
+      savedDeals: savedDeals.includes(dealId)
+        ? savedDeals.filter(id => id !== dealId)
+        : [...savedDeals, dealId]
     };
 
     try {
@@ -128,7 +130,7 @@ export const DealsInfluenceurScreen = () => {
   // Fonction pour extraire les intérêts quel que soit le format
   const extractInterests = (interests: any): string[] => {
     if (!interests) return [];
-    
+
     // Si c'est une chaîne de caractères
     if (typeof interests === 'string') {
       // Essayer de parser comme JSON au cas où c'est une chaîne JSON
@@ -141,12 +143,12 @@ export const DealsInfluenceurScreen = () => {
         return interests.split(/(?=[A-Z])|,|\s+/).filter(Boolean).map(s => s.trim());
       }
     }
-    
+
     // Si c'est un tableau
     if (Array.isArray(interests)) {
       return interests.map(i => String(i).trim()).filter(Boolean);
     }
-    
+
     return [];
   };
 
@@ -157,7 +159,7 @@ export const DealsInfluenceurScreen = () => {
     return [...acc, ...dealInterests];
   }, []);
 
-// Obtenir la liste unique des intérêts et ajouter "Tous" au début
+  // Obtenir la liste unique des intérêts et ajouter "Tous" au début
   const interests = ["Tous", ...Array.from(new Set(allInterests))].filter(Boolean);
 
   // Get unique list of countries and normalize country names, without "Tous"
@@ -174,19 +176,19 @@ export const DealsInfluenceurScreen = () => {
   // Filter deals by search query, interest and country
   const filteredDeals = deals.filter(deal => {
     // Filtre par recherche
-    const matchesSearch = searchQuery === "" || 
+    const matchesSearch = searchQuery === "" ||
       deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       deal.description.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Filtre par intérêts
     const dealInterests = extractInterests(deal.interests);
     const matchesInterest = selectedFilter === "Tous" || dealInterests.includes(selectedFilter);
-    
-    const dealCountry = deal.locationName ? 
-      normalizeCountryName(deal.locationName.split(", ").pop() || "") : 
+
+    const dealCountry = deal.locationName ?
+      normalizeCountryName(deal.locationName.split(", ").pop() || "") :
       "Non spécifié";
     const matchesCountry = selectedCountry === "Tous" || dealCountry === selectedCountry;
-    
+
     return matchesSearch && matchesInterest && matchesCountry;
   });
 
@@ -205,145 +207,147 @@ export const DealsInfluenceurScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <Text style={styles.title}>Deals</Text>
-          <View style={styles.headerRight}>
-            <TouchableOpacity onPress={() => navigation.navigate('NotificationInfluenceur')}>
-              <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
-              <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Image source={require('../../assets/loupe.png')} style={styles.searchIcon} />
-            <TextInput 
-              placeholder="Recherche" 
-              placeholderTextColor="#999" 
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <Image source={require('../../assets/menu.png')} style={styles.menuIcon} />
-          </View>
-        </View>
-
-        <View style={styles.filtersContainer}>
-          <TouchableOpacity 
-            style={styles.filterSelector} 
-            onPress={() => setShowInterestsModal(true)}
-          >
-            <Text style={styles.filterLabel}>Intérêts: {selectedFilter}</Text>
-            <Ionicons name="chevron-down" size={20} color="#14210F" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.filterSelector} 
-            onPress={() => setShowCountriesModal(true)}
-          >
-            <Text style={styles.filterLabel}>Pays: {selectedCountry}</Text>
-            <Ionicons name="chevron-down" size={20} color="#14210F" />
-          </TouchableOpacity>
-        </View>
-
-        <Modal
-          visible={showInterestsModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowInterestsModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Sélectionner un intérêt</Text>
-                <TouchableOpacity onPress={() => setShowInterestsModal(false)}>
-                  <Text style={styles.closeButton}>Fermer</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.modalScroll}>
-                {interests.map((interest, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.modalOption,
-                      selectedFilter === interest && styles.modalOptionSelected
-                    ]}
-                    onPress={() => {
-                      setSelectedFilter(interest);
-                      setShowInterestsModal(false);
-                    }}
-                  >
-                    <Text style={[
-                      styles.modalOptionText,
-                      selectedFilter === interest && styles.modalOptionTextSelected
-                    ]}>
-                      {interest}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <View style={styles.container}>
+        <ScrollView>
+          <View style={styles.header}>
+            <Text style={styles.title}>Deals</Text>
+            <View style={styles.headerRight}>
+              <TouchableOpacity onPress={() => navigation.navigate('NotificationInfluenceur')}>
+                <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
+                <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
 
-        <Modal
-          visible={showCountriesModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowCountriesModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Sélectionner un pays</Text>
-                <TouchableOpacity onPress={() => setShowCountriesModal(false)}>
-                  <Text style={styles.closeButton}>Fermer</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.modalScroll}>
-                {countriesWithTous.map((country, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.modalOption,
-                      selectedCountry === country && styles.modalOptionSelected
-                    ]}
-                    onPress={() => {
-                      setSelectedCountry(country);
-                      setShowCountriesModal(false);
-                    }}
-                  >
-                    <Text style={[
-                      styles.modalOptionText,
-                      selectedCountry === country && styles.modalOptionTextSelected
-                    ]}>
-                      {country}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+              <Image source={require('../../assets/loupe.png')} style={styles.searchIcon} />
+              <TextInput
+                placeholder="Recherche"
+                placeholderTextColor="#999"
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              <Image source={require('../../assets/menu.png')} style={styles.menuIcon} />
             </View>
           </View>
-        </Modal>
 
-        {filteredDeals.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Aucun deal disponible pour ces filtres</Text>
+          <View style={styles.filtersContainer}>
+            <TouchableOpacity
+              style={styles.filterSelector}
+              onPress={() => setShowInterestsModal(true)}
+            >
+              <Text style={styles.filterLabel}>Intérêts: {selectedFilter}</Text>
+              <Ionicons name="chevron-down" size={20} color="#14210F" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.filterSelector}
+              onPress={() => setShowCountriesModal(true)}
+            >
+              <Text style={styles.filterLabel}>Pays: {selectedCountry}</Text>
+              <Ionicons name="chevron-down" size={20} color="#14210F" />
+            </TouchableOpacity>
           </View>
-        ) : (
-          <>
-            <Section title="Populaire" deals={popularDeals} savedDeals={savedDeals} toggleSave={toggleSave} />
-            <Section title="Autres deals" deals={otherDeals} savedDeals={savedDeals} toggleSave={toggleSave} />
-          </>
-        )}
-      </ScrollView>
-      <BottomNavbar />
-    </View>
+
+          <Modal
+            visible={showInterestsModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowInterestsModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Sélectionner un intérêt</Text>
+                  <TouchableOpacity onPress={() => setShowInterestsModal(false)}>
+                    <Text style={styles.closeButton}>Fermer</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.modalScroll}>
+                  {interests.map((interest, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.modalOption,
+                        selectedFilter === interest && styles.modalOptionSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedFilter(interest);
+                        setShowInterestsModal(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.modalOptionText,
+                        selectedFilter === interest && styles.modalOptionTextSelected
+                      ]}>
+                        {interest}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+
+          <Modal
+            visible={showCountriesModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowCountriesModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Sélectionner un pays</Text>
+                  <TouchableOpacity onPress={() => setShowCountriesModal(false)}>
+                    <Text style={styles.closeButton}>Fermer</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.modalScroll}>
+                  {countriesWithTous.map((country, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.modalOption,
+                        selectedCountry === country && styles.modalOptionSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedCountry(country);
+                        setShowCountriesModal(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.modalOptionText,
+                        selectedCountry === country && styles.modalOptionTextSelected
+                      ]}>
+                        {country}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+
+          {filteredDeals.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Aucun deal disponible pour ces filtres</Text>
+            </View>
+          ) : (
+            <>
+              <Section title="Populaire" deals={popularDeals} savedDeals={savedDeals} toggleSave={toggleSave} />
+              <Section title="Autres deals" deals={otherDeals} savedDeals={savedDeals} toggleSave={toggleSave} />
+            </>
+          )}
+        </ScrollView>
+        <BottomNavbar />
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -426,16 +430,6 @@ const DealCard = ({ deal, saved, onSave }: DealCardProps) => {
       const newCandidature = { influenceurId: user.uid, status: "Envoyé" };
       await updateDoc(dealRef, { candidatures: arrayUnion(newCandidature) });
 
-      await sendNotification({
-        toUserId: deal.merchantId,
-        fromUserId: user.uid,
-        message: "Un influenceur a postulé à votre deal !",
-        type: "application",
-        relatedDealId: deal.id,
-        targetRoute: 'DealCandidatesCommercant',
-        dealId: deal.id,
-        receiverId: deal.merchantId,
-      });
       const userSnap = await getDoc(doc(db, "users", deal.merchantId));
       const userToken = userSnap.exists() ? userSnap.data()?.expoPushToken : null;
 
@@ -443,6 +437,7 @@ const DealCard = ({ deal, saved, onSave }: DealCardProps) => {
         await sendNotificationToToken(userToken,
           "Nouvelle candidature !",
           `Un influenceur a postulé à votre deal !`,
+          { screen: "DealsCandidates", dealId: deal.id }
         );
       }
       const chatId = [user.uid, deal.merchantId].sort().join("");
@@ -502,8 +497,8 @@ const DealCard = ({ deal, saved, onSave }: DealCardProps) => {
           style={styles.dealImage}
           resizeMode="cover"
         />
-        <TouchableOpacity 
-          style={styles.saveButton} 
+        <TouchableOpacity
+          style={styles.saveButton}
           onPress={(e) => {
             e.stopPropagation();
             onSave(deal.id);
@@ -532,7 +527,7 @@ const DealCard = ({ deal, saved, onSave }: DealCardProps) => {
               onPress={(e) => {
                 e.stopPropagation();
                 const user = auth.currentUser;
-                navigation.navigate('DealsDetailsInfluenceur', {dealId: deal.id, influenceurId: user?.uid!});
+                navigation.navigate('DealsDetailsInfluenceur', { dealId: deal.id, influenceurId: user?.uid! });
               }}
             >
               <Text style={styles.statusButtonText}>{status}</Text>

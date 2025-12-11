@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A2C24',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingBottom: 120 
   },
   content: {
     flex: 1,
@@ -73,6 +74,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     position: 'relative',
+    marginBottom: 12,
   },
   image: {
     width: '80%',

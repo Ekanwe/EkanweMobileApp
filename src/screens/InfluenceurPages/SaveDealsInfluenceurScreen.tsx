@@ -9,6 +9,9 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,7 +20,7 @@ import { auth, db } from '../../firebase/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomNavbar } from './BottomNavbar';
 import { RootStackParamList } from '../../types/navigation';
-import { sendNotification, sendNotificationToToken } from '../../hooks/sendNotifications';
+import { sendNotificationToToken } from '../../hooks/sendNotifications';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -90,16 +93,6 @@ export const SaveDealsInfluenceurScreen = () => {
       const newCandidature = { influenceurId: user.uid, status: "Envoyé" };
       await updateDoc(dealRef, { candidatures: arrayUnion(newCandidature) });
 
-      await sendNotification({
-        toUserId: deal.merchantId,
-        fromUserId: user.uid,
-        message: "Un influenceur a postulé à votre deal !",
-        type: "application",
-        relatedDealId: deal.id,
-        targetRoute: 'DealCandidatesCommercant',
-        dealId: deal.id,
-        receiverId: deal.merchantId,
-      });
       const userSnap = await getDoc(doc(db, "users", deal.merchantId));
       const userToken = userSnap.exists() ? userSnap.data()?.expoPushToken : null;
 
@@ -107,6 +100,7 @@ export const SaveDealsInfluenceurScreen = () => {
         await sendNotificationToToken(userToken,
           "Nouvelle candidature !",
           `Un influenceur a postulé à votre deal !`,
+          { screen: "DealsCandidates", dealId: deal.id }
         );
       }
 
@@ -190,79 +184,87 @@ export const SaveDealsInfluenceurScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Enregistrés</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationInfluenceur')}>
-            <Image source={require('../../assets/clochenotification.png')} style={styles.headerIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
-            <Image source={require('../../assets/ekanwesign.png')} style={styles.headerIcon} />
-          </TouchableOpacity>
-        </View>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Enregistrés</Text>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity onPress={() => navigation.navigate('NotificationInfluenceur')}>
+                <Image source={require('../../assets/clochenotification.png')} style={styles.headerIcon} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
+                <Image source={require('../../assets/ekanwesign.png')} style={styles.headerIcon} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Image source={require('../../assets/loupe.png')} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Recherche"
-            placeholderTextColor="#666666"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          <Image source={require('../../assets/menu.png')} style={styles.menuIcon} />
-        </View>
-      </View>
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+              <Image source={require('../../assets/loupe.png')} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Recherche"
+                placeholderTextColor="#666666"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              <Image source={require('../../assets/menu.png')} style={styles.menuIcon} />
+            </View>
+          </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF6B2E" />
-          <Text style={styles.loadingText}>Chargement en cours...</Text>
-        </View>
-      ) : filteredDeals.length === 0 ? (
-        <Text style={styles.emptyText}>Aucun deal enregistré.</Text>
-      ) : (
-        <ScrollView style={styles.dealsList}>
-          {filteredDeals.map((deal: any, index: number) => {
-            const status = getStatus(deal);
-            return (
-              <View key={index} style={styles.dealCard}>
-                <View style={styles.imageContainer}>
-                  <Image
-                    source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
-                    style={styles.dealImage}
-                  />
-                  <TouchableOpacity
-                    style={styles.saveButton}
-                    onPress={() => handleToggleSave(deal.id)}
-                  >
-                    <Image source={require('../../assets/fullsave.png')} style={styles.saveIcon} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.dealContent}>
-                  <Text style={styles.dealTitle}>{deal.title}</Text>
-                  <Text style={styles.dealDescription} numberOfLines={2}>{deal.description}</Text>
-                  <View style={styles.dealActions}>
-                    <TouchableOpacity
-                      style={styles.viewMoreButton}
-                      onPress={()=>{const user = auth.currentUser; navigation.navigate('DealsDetailsInfluenceur', {dealId: deal.id, influenceurId: user?.uid!})}}
-                    >
-                      <Text style={styles.viewMoreText}>Voir plus</Text>
-                    </TouchableOpacity>
-                    {renderStatusButton(status, deal)}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF6B2E" />
+              <Text style={styles.loadingText}>Chargement en cours...</Text>
+            </View>
+          ) : filteredDeals.length === 0 ? (
+            <Text style={styles.emptyText}>Aucun deal enregistré.</Text>
+          ) : (
+            <ScrollView style={styles.dealsList}>
+              {filteredDeals.map((deal: any, index: number) => {
+                const status = getStatus(deal);
+                return (
+                  <View key={index} style={styles.dealCard}>
+                    <View style={styles.imageContainer}>
+                      <Image
+                        source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
+                        style={styles.dealImage}
+                      />
+                      <TouchableOpacity
+                        style={styles.saveButton}
+                        onPress={() => handleToggleSave(deal.id)}
+                      >
+                        <Image source={require('../../assets/fullsave.png')} style={styles.saveIcon} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.dealContent}>
+                      <Text style={styles.dealTitle}>{deal.title}</Text>
+                      <Text style={styles.dealDescription} numberOfLines={2}>{deal.description}</Text>
+                      <View style={styles.dealActions}>
+                        <TouchableOpacity
+                          style={styles.viewMoreButton}
+                          onPress={() => { const user = auth.currentUser; navigation.navigate('DealsDetailsInfluenceur', { dealId: deal.id, influenceurId: user?.uid! }) }}
+                        >
+                          <Text style={styles.viewMoreText}>Voir plus</Text>
+                        </TouchableOpacity>
+                        {renderStatusButton(status, deal)}
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
-      )}
+                );
+              })}
+            </ScrollView>
+          )}
 
-      <BottomNavbar />
-    </View>
+          <BottomNavbar />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

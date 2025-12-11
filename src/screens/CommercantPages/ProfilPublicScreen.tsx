@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Linking, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Linking, ActivityIndicator, StyleSheet, SafeAreaView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { db, auth } from '../../firebase/firebase';
 import { doc, getDoc, collection, getDocs, setDoc, updateDoc } from 'firebase/firestore';
@@ -160,89 +160,93 @@ export const ProfilPublicScreen = () => {
   const rating = Math.round(averageRatings[userId] || 0);
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#14210F" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Profil Public</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <ScrollView style={styles.container}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#14210F" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Profil Public</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.profileHeader}>
-        <Image
-          source={{ uri: photoURL || 'https://via.placeholder.com/150' }}
-          style={styles.profileImage}
-        />
-        <Text style={styles.profileName}>{pseudonyme || `${prenom} ${nom}`}</Text>
-        <Text style={styles.profileBio}>{bio || 'Aucune bio disponible.'}</Text>
-        <View style={styles.ratingContainer}>
-          {[...Array(5)].map((_, i) => (
-            <Text key={i} style={[styles.star, i < rating && styles.starFilled]}>★</Text>
-          ))}
+        <View style={styles.profileHeader}>
+          <Image
+            source={{ uri: photoURL || 'https://via.placeholder.com/150' }}
+            style={styles.profileImage}
+          />
+          <Text style={styles.profileName}>{pseudonyme || `${prenom} ${nom}`}</Text>
+          <Text style={styles.profileBio}>{bio || 'Aucune bio disponible.'}</Text>
+          <View style={styles.ratingContainer}>
+            {[...Array(5)].map((_, i) => (
+              <Text key={i} style={[styles.star, i < rating && styles.starFilled]}>★</Text>
+            ))}
+          </View>
+          <Text style={styles.dealsCount}>{dealsApplied} deals réalisés</Text>
+          {currentUser?.role === 'commerçant' && currentUser.uid !== userId && (
+            <TouchableOpacity
+              onPress={handleContact}
+              disabled={loadingContact}
+              style={[styles.contactButton, loadingContact && styles.contactButtonDisabled]}
+            >
+              <Text style={styles.contactButtonText}>{loadingContact ? 'Contact...' : 'Contacter'}</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        <Text style={styles.dealsCount}>{dealsApplied} deals réalisés</Text>
-        {currentUser?.role === 'commerçant' && currentUser.uid !== userId && (
-          <TouchableOpacity
-            onPress={handleContact}
-            disabled={loadingContact}
-            style={[styles.contactButton, loadingContact && styles.contactButtonDisabled]}
-          >
-            <Text style={styles.contactButtonText}>{loadingContact ? 'Contact...' : 'Contacter'}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
 
-      <View style={styles.infoSection}>
-        <Text style={styles.sectionTitle}>Informations personnelles</Text>
-        <Text style={styles.infoText}>Nom : {nom}</Text>
-        <Text style={styles.infoText}>Prénom : {prenom}</Text>
-        <Text style={styles.infoText}>Email : {email}</Text>
-        <Text style={styles.infoText}>Téléphone : {phone}</Text>
-        <Text style={styles.infoText}>Date de naissance : {dateNaissance}</Text>
-        {interets?.length > 0 && (
-          <Text style={styles.infoText}>Centres d'intérêt : {interets.join(', ')}</Text>
-        )}
-      </View>
-
-      {completedDealsData.length > 0 && (
-        <View style={styles.dealsSection}>
-          <Text style={styles.sectionTitle}>Deals terminés :</Text>
-          {completedDealsData.map((deal, index) => (
-            <View key={index} style={styles.dealCard}>
-              <Text style={styles.dealTitle}>{deal.title}</Text>
-              <Text style={styles.dealStats}>{deal.likes} likes · {deal.shares} nombre de partage</Text>
-            </View>
-          ))}
+        <View style={styles.infoSection}>
+          <Text style={styles.sectionTitle}>Informations personnelles</Text>
+          <Text style={styles.infoText}>Nom : {nom}</Text>
+          <Text style={styles.infoText}>Prénom : {prenom}</Text>
+          <Text style={styles.infoText}>Email : {email}</Text>
+          <Text style={styles.infoText}>Téléphone : {phone}</Text>
+          <Text style={styles.infoText}>Date de naissance : {dateNaissance}</Text>
+          {interets?.length > 0 && (
+            <Text style={styles.infoText}>Centres d'intérêt : {interets.join(', ')}</Text>
+          )}
         </View>
-      )}
 
-      <View style={styles.portfolioSection}>
-        <Text style={styles.sectionTitle}>Portfolio</Text>
-        {portfolioLink && portfolioLink !== 'Nothing' ? (
-          <TouchableOpacity onPress={() => Linking.openURL(portfolioLink)} style={styles.portfolioButton}>
-            <Text style={styles.portfolioButtonText}>Voir le Portfolio</Text>
-          </TouchableOpacity>
-        ) : (
-          <Text style={styles.noContentText}>Aucun lien de portfolio</Text>
+        {completedDealsData.length > 0 && (
+          <View style={styles.dealsSection}>
+            <Text style={styles.sectionTitle}>Deals terminés :</Text>
+            {completedDealsData.map((deal, index) => (
+              <View key={index} style={styles.dealCard}>
+                <Text style={styles.dealTitle}>{deal.title}</Text>
+                <Text style={styles.dealStats}>{deal.likes} likes · {deal.shares} nombre de partage</Text>
+              </View>
+            ))}
+          </View>
         )}
-      </View>
 
-      <View style={styles.socialSection}>
-        {instagram && (
-          <TouchableOpacity onPress={() => Linking.openURL(instagram.startsWith('http') ? instagram : `https://instagram.com/${instagram}`)}>
-            <Text style={styles.socialLink}>Instagram : {instagram}</Text>
-          </TouchableOpacity>
-        )}
-        {tiktok && (
-          <TouchableOpacity onPress={() => Linking.openURL(tiktok.startsWith('http') ? tiktok : `https://tiktok.com/@${tiktok}`)}>
-            <Text style={styles.socialLink}>TikTok : {tiktok}</Text>
-          </TouchableOpacity>
-        )}
-        {!instagram && !tiktok && <Text style={styles.noContentText}>Aucun réseau social renseigné.</Text>}
-      </View>
-    </ScrollView>
+        <View style={styles.portfolioSection}>
+          <Text style={styles.sectionTitle}>Portfolio</Text>
+          {portfolioLink && portfolioLink !== 'Nothing' ? (
+            <TouchableOpacity onPress={() => Linking.openURL(portfolioLink)} style={styles.portfolioButton}>
+              <Text style={styles.portfolioButtonText}>Voir le Portfolio</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.noContentText}>Aucun lien de portfolio</Text>
+          )}
+        </View>
+
+        <View style={styles.socialSection}>
+          {instagram && (
+            <TouchableOpacity onPress={() => Linking.openURL(instagram.startsWith('http') ? instagram : `https://instagram.com/${instagram}`)}>
+              <Text style={styles.socialLink}>Instagram : {instagram}</Text>
+            </TouchableOpacity>
+          )}
+          {tiktok && (
+            <TouchableOpacity onPress={() => Linking.openURL(tiktok.startsWith('http') ? tiktok : `https://tiktok.com/@${tiktok}`)}>
+              <Text style={styles.socialLink}>TikTok : {tiktok}</Text>
+            </TouchableOpacity>
+          )}
+          {!instagram && !tiktok && <Text style={styles.noContentText}>Aucun réseau social renseigné.</Text>}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -264,8 +268,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: '#14210F',
   },
-  header: { 
-    padding: 16, 
+  header: {
+    padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'

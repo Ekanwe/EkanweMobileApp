@@ -9,6 +9,9 @@ import {
   TextInput,
   Modal,
   Alert,
+  KeyboardAvoidingView,
+  SafeAreaView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -105,7 +108,7 @@ export const ReviewInfluenceurScreen = () => {
 
   const handleSubmit = async () => {
     if (!dealId || !user) return;
-  
+
     const hasRating = ratings.some(r => r.score > 0);
     if (!hasRating) {
       Alert.alert("Erreur", "Veuillez attribuer au moins une étoile.");
@@ -115,19 +118,19 @@ export const ReviewInfluenceurScreen = () => {
       Alert.alert("Erreur", "Veuillez écrire un commentaire.");
       return;
     }
-  
+
     const avgRating = Math.round(
       ratings.reduce((acc, cur) => acc + cur.score, 0) / ratings.length
     );
-  
+
     try {
       const dealRef = doc(db, "deals", dealId);
       const dealSnap = await getDoc(dealRef);
       if (!dealSnap.exists()) return;
-  
+
       const dealData = dealSnap.data();
       const uid = auth.currentUser?.uid;
-  
+
       const updatedCandidatures = dealData.candidatures.map((cand: any) => {
         if (cand.influenceurId === uid) {
           return {
@@ -143,7 +146,7 @@ export const ReviewInfluenceurScreen = () => {
         }
         return cand;
       });
-  
+
       await updateDoc(dealRef, { candidatures: updatedCandidatures });
       setIsModalVisible(true);
     } catch (error) {
@@ -164,65 +167,75 @@ export const ReviewInfluenceurScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Icon name="chevron-left" size={24} color="#FF6B2E" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Évaluation</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
-          <Image
-            source={require('../../assets/ekanwesign.png')}
-            style={styles.headerLogo}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatarPlaceholder} />
-          <View>
-            <Text style={styles.userName}>
-              {user?.pseudonyme || user?.prenom || "Nom de l'influenceur"}
-            </Text>
-            <Text style={styles.dealType}>
-              Prestation : {Array.isArray(deal?.typeOfContent) ? deal?.typeOfContent.join(", ") : deal?.typeOfContent}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.ratingsContainer}>
-          {ratings.map((rating, index) => (
-            <View key={index} style={styles.ratingItem}>
-              <Text style={styles.ratingCategory}>{rating.category}</Text>
-              <StarRating score={rating.score} onRate={(s) => handleRatingChange(index, s)} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Icon name="chevron-left" size={24} color="#FF6B2E" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Évaluation</Text>
             </View>
-          ))}
+            <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
+              <Image
+                source={require('../../assets/ekanwesign.png')}
+                style={styles.headerLogo}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.content}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.userInfo}>
+              <View style={styles.avatarPlaceholder} />
+              <View>
+                <Text style={styles.userName}>
+                  {user?.pseudonyme || user?.prenom || "Nom de l'influenceur"}
+                </Text>
+                <Text style={styles.dealType}>
+                  Prestation : {Array.isArray(deal?.typeOfContent) ? deal?.typeOfContent.join(", ") : deal?.typeOfContent}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.ratingsContainer}>
+              {ratings.map((rating, index) => (
+                <View key={index} style={styles.ratingItem}>
+                  <Text style={styles.ratingCategory}>{rating.category}</Text>
+                  <StarRating score={rating.score} onRate={(s) => handleRatingChange(index, s)} />
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.commentContainer}>
+              <Text style={styles.commentLabel}>Commentaire</Text>
+              <TextInput
+                style={styles.commentInput}
+                value={comment}
+                onChangeText={setComment}
+                placeholder="Partagez votre expérience détaillée..."
+                placeholderTextColor="#666666"
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+              <Text style={styles.submitButtonText}>Soumettre l'évaluation</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          <ThankYouModal isVisible={isModalVisible} onClose={handleCloseModal} />
         </View>
-
-        <View style={styles.commentContainer}>
-          <Text style={styles.commentLabel}>Commentaire</Text>
-          <TextInput
-            style={styles.commentInput}
-            value={comment}
-            onChangeText={setComment}
-            placeholder="Partagez votre expérience détaillée..."
-            placeholderTextColor="#666666"
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
-        </View>
-
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Soumettre l'évaluation</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      <ThankYouModal isVisible={isModalVisible} onClose={handleCloseModal} />
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

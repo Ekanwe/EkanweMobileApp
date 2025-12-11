@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  Platform
+  Platform,
+  SafeAreaView,
+  KeyboardAvoidingView
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
@@ -271,89 +273,100 @@ export const ProfileCommercantScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#14210F" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Mon Profil</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-            <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-            <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.imageContainer}>
-        <View style={styles.profileImageContainer}>
-          {profileImage ? (
-            <Image
-              source={{ uri: profileImage }}
-              style={styles.profileImage}
-            />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Ionicons name="camera" size={30} color="#FF6B2E" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <ScrollView style={styles.container}
+          contentContainerStyle={{ paddingBottom: 180 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#14210F" />
+              </TouchableOpacity>
+              <Text style={styles.title}>Mon Profil</Text>
             </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+                <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+                <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.imageContainer}>
+            <View style={styles.profileImageContainer}>
+              {profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View style={styles.placeholderImage}>
+                  <Ionicons name="camera" size={30} color="#FF6B2E" />
+                </View>
+              )}
+            </View>
+            <View style={styles.imageButtonsContainer}>
+              <TouchableOpacity
+                style={styles.cameraButton}
+                onPress={handleImageClick}
+              >
+                <Ionicons name="camera" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.galleryButton}
+                onPress={handleGalleryClick}
+              >
+                <Ionicons name="images" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <InputField label="Pseudonyme" value={pseudonyme} onChange={setPseudonyme} />
+            <InputField label="Prénom" value={prenom} onChange={setPrenom} />
+            <InputField label="Nom" value={nom} onChange={setNom} />
+            <InputField label="Date de Naissance" value={dateNaissance} onChange={setDateNaissance} type="date" />
+            <InputField label="Téléphone" value={phone} onChange={setPhone} />
+            <InputField label="Instagram" value={instagram} onChange={setInstagram} />
+            <InputField label="TikTok" value={tiktok} onChange={setTiktok} />
+            <InputField label="Lien de Portfolio" value={portfolioLink} onChange={setPortfolioLink} />
+            <InputField label="Bio" value={bio} onChange={setBio} multiline />
+          </View>
+
+          {message && (
+            <Text style={[styles.message, message.includes('succès') ? styles.successMessage : styles.errorMessage]}>
+              {message}
+            </Text>
           )}
-        </View>
-        <View style={styles.imageButtonsContainer}>
+
           <TouchableOpacity
-            style={styles.cameraButton}
-            onPress={handleImageClick}
+            onPress={handleSave}
+            disabled={loading}
+            style={[styles.button, loading ? styles.disabledButton : styles.saveButton]}
           >
-            <Ionicons name="camera" size={20} color="#FFFFFF" />
+            <Text style={styles.buttonText}>{loading ? 'Sauvegarde...' : 'Sauvegarder'}</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={styles.galleryButton}
-            onPress={handleGalleryClick}
+            onPress={handleLogout}
+            style={[styles.button, styles.logoutButton]}
           >
-            <Ionicons name="images" size={20} color="#FFFFFF" />
+            <Text style={styles.buttonText}>Déconnexion</Text>
           </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.inputContainer}>
-        <InputField label="Pseudonyme" value={pseudonyme} onChange={setPseudonyme} />
-        <InputField label="Prénom" value={prenom} onChange={setPrenom} />
-        <InputField label="Nom" value={nom} onChange={setNom} />
-        <InputField label="Date de Naissance" value={dateNaissance} onChange={setDateNaissance} type="date" />
-        <InputField label="Téléphone" value={phone} onChange={setPhone} />
-        <InputField label="Instagram" value={instagram} onChange={setInstagram} />
-        <InputField label="TikTok" value={tiktok} onChange={setTiktok} />
-        <InputField label="Lien de Portfolio" value={portfolioLink} onChange={setPortfolioLink} />
-        <InputField label="Bio" value={bio} onChange={setBio} multiline />
-      </View>
-
-      {message && (
-        <Text style={[styles.message, message.includes('succès') ? styles.successMessage : styles.errorMessage]}>
-          {message}
-        </Text>
-      )}
-
-      <TouchableOpacity
-        onPress={handleSave}
-        disabled={loading}
-        style={[styles.button, loading ? styles.disabledButton : styles.saveButton]}
-      >
-        <Text style={styles.buttonText}>{loading ? 'Sauvegarde...' : 'Sauvegarder'}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={handleLogout}
-        style={[styles.button, styles.logoutButton]}
-      >
-        <Text style={styles.buttonText}>Déconnexion</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
-        <Text style={styles.deleteButtonText}>Supprimer mon compte</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+            <Text style={styles.deleteButtonText}>Supprimer mon compte</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

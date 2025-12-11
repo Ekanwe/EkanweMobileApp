@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, TouchableOpacity, ScrollView, Linking, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, Image, TouchableOpacity, ScrollView, Linking, ActivityIndicator, StyleSheet, SafeAreaView } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../firebase/firebase";
-import { sendNotification, sendNotificationToToken } from "../../hooks/sendNotifications";
+import { sendNotificationToToken } from "../../hooks/sendNotifications";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/navigation";
@@ -46,7 +46,7 @@ export const DealsDetailsCommercantScreen = () => {
             const cand = dealData.candidatures?.find((c: any) => c.influenceurId === influenceurId);
             if (cand) {
               setCandidature(cand);
-              setHasReviewed(!!cand.influreview);
+              setHasReviewed(!!cand.review);
             }
           }
         }
@@ -76,16 +76,6 @@ export const DealsDetailsCommercantScreen = () => {
 
       await updateDoc(dealRef, { candidatures: updatedCandidatures });
 
-      await sendNotification({
-        toUserId: influenceurId,
-        fromUserId: auth.currentUser?.uid!,
-        message: `Votre prestation a été validée par le commerçant.`,
-        relatedDealId: dealId,
-        dealId: dealId,
-        targetRoute: 'DealsDetailsInfluenceur',
-        type: "deal_approved",
-        receiverId: influenceurId,
-      });
       const userSnap = await getDoc(doc(db, "users", influenceurId));
       const userToken = userSnap.exists() ? userSnap.data()?.expoPushToken : null;
 
@@ -93,6 +83,7 @@ export const DealsDetailsCommercantScreen = () => {
         await sendNotificationToToken(userToken,
           "Prestation validée",
           `Votre prestation a été validée par le commerçant.`,
+          { screen: "DealDetailsInfluenceur", dealId: dealId }
         );
       }
 
@@ -119,15 +110,6 @@ export const DealsDetailsCommercantScreen = () => {
 
       await updateDoc(dealRef, { candidatures: updatedCandidatures });
 
-      await sendNotification({
-        toUserId: influenceurId,
-        fromUserId: auth.currentUser?.uid!,
-        message: `Votre candidature a été résiliée par le commerçant.`,
-        relatedDealId: dealId,
-        targetRoute: 'SuiviDealsCommercant',
-        type: "deal_cancelled",
-        receiverId: influenceurId,
-      });
       const userSnap = await getDoc(doc(db, "users", influenceurId));
       const userToken = userSnap.exists() ? userSnap.data()?.expoPushToken : null;
 
@@ -135,6 +117,7 @@ export const DealsDetailsCommercantScreen = () => {
         await sendNotificationToToken(userToken,
           "Candidature refusée",
           `Votre candidature a été résiliée par le commerçant.`,
+          { screen: "DealDetailsInfluenceur", dealId: dealId }
         );
       }
       navigation.goBack();
@@ -170,150 +153,156 @@ export const DealsDetailsCommercantScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#14210F" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Détails du Deal {deal.title}</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
-            <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
-            <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <Image
-        source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
-        style={styles.dealImage}
-        resizeMode="cover"
-      />
-
-      <View style={styles.infoContainer}>
-        <Text style={styles.title}>{deal.title}</Text>
-        <View style={styles.locationRow}>
-          <Text style={styles.mapPin}>📍</Text>
-          {deal.locationCoords ? (
-            <Text style={styles.mapLink} onPress={openGoogleMaps}>
-              Voir sur Google Maps
-            </Text>
-          ) : (
-            <Text style={styles.locationName}>{deal.locationName || "Non défini"}</Text>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text>{deal.description}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Intérêts</Text>
-          <View style={styles.tagContainer}>
-            {(deal.interests || []).map((item: string, idx: number) => (
-              <View key={idx} style={styles.tag}>
-                <Text>{item} </Text>
-              </View>
-            ))}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <ScrollView style={styles.container}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#14210F" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Détails du Deal {deal.title}</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => navigation.navigate('NotificationsCommercant')}>
+              <Image source={require('../../assets/clochenotification.png')} style={styles.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('DealsCommercant')}>
+              <Image source={require('../../assets/ekanwesign.png')} style={styles.icon} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Type de contenu</Text>
-          <View style={styles.tagContainer}>
-            {(deal.typeOfContent || []).map((item: string, idx: number) => (
-              <View key={idx} style={styles.tag}>
-                <Text>{item} </Text>
-              </View>
-            ))}
+        <Image
+          source={deal.imageUrl ? { uri: deal.imageUrl } : require('../../assets/profile.png')}
+          style={styles.dealImage}
+          resizeMode="cover"
+        />
+
+        <View style={styles.infoContainer}>
+          <Text style={styles.title}>{deal.title}</Text>
+          <View style={styles.locationRow}>
+            <Text style={styles.mapPin}>📍</Text>
+            {deal.locationCoords ? (
+              <Text style={styles.mapLink} onPress={openGoogleMaps}>
+                Voir sur Google Maps
+              </Text>
+            ) : (
+              <Text style={styles.locationName}>{deal.locationName || "Non défini"}</Text>
+            )}
           </View>
-        </View>
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate("DealsEdit", { dealId: deal.id })}
-          style={[styles.button, styles.primaryButton]}
-        >
-          <Text style={styles.buttonText}>Modifier</Text>
-        </TouchableOpacity>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Description</Text>
+            <Text>{deal.description}</Text>
+          </View>
 
-        {candidature && (
-          <>
-            <Text style={styles.title}>Candidature de {influenceur.pseudonyme}</Text>
-            <View style={{ marginBottom: 16 }}>
-              <ProgressRibbon currentStatus={candidature.status} />
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Intérêts</Text>
+            <View style={styles.tagContainer}>
+              {(deal.interests || []).map((item: string, idx: number) => (
+                <View key={idx} style={styles.tag}>
+                  <Text>{item} </Text>
+                </View>
+              ))}
             </View>
+          </View>
 
-            {["Accepté", "Approbation", "Terminé"].includes(candidature.status) &&
-              candidature.proofs &&
-              candidature.proofs.length > 0 && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Captures réalisées :</Text>
-                  {candidature.proofs.map((proof: any, index: number) => (
-                    <View key={index} style={{ marginBottom: 24 }}>
-                      <Image source={{ uri: proof.image }} style={styles.proofImage} />
-                      <View style={styles.proofStats}>
-                        <Text>Likes : {proof.likes}</Text>
-                        <Text>Nombre de partage : {proof.shares}</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Type de contenu</Text>
+            <View style={styles.tagContainer}>
+              {(deal.typeOfContent || []).map((item: string, idx: number) => (
+                <View key={idx} style={styles.tag}>
+                  <Text>{item} </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("DealsEdit", { dealId: dealId });
+            }}
+            style={[styles.button, styles.primaryButton]}
+          >
+            <Text style={styles.buttonText}>Modifier</Text>
+          </TouchableOpacity>
+
+          {candidature && (
+            <>
+              <Text style={styles.title}>Candidature de {influenceur.pseudonyme}</Text>
+              <View style={{ marginBottom: 16 }}>
+                <ProgressRibbon currentStatus={candidature.status} />
+              </View>
+
+              {["Accepté", "Approbation", "Terminé"].includes(candidature.status) &&
+                candidature.proofs &&
+                candidature.proofs.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Captures réalisées :</Text>
+                    {candidature.proofs.map((proof: any, index: number) => (
+                      <View key={index} style={{ marginBottom: 24 }}>
+                        <Image source={{ uri: proof.image }} style={styles.proofImage} />
+                        <View style={styles.proofStats}>
+                          <Text>Likes : {proof.likes}</Text>
+                          <Text>Nombre de partage : {proof.shares}</Text>
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    ))}
+                  </View>
+                )}
+
+              {candidature.status === "Terminé" && candidature.review && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Avis laissé :</Text>
+                  <Text style={{ fontStyle: "italic" }}>"{candidature.review.comment}"</Text>
                 </View>
               )}
 
-            {candidature.status === "Terminé" && candidature.review && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Avis laissé :</Text>
-                <Text style={{ fontStyle: "italic" }}>"{candidature.review.comment}"</Text>
-              </View>
-            )}
+              {candidature.status === "Terminé" && (
+                <TouchableOpacity
+                  onPress={() =>
+                    !hasReviewed && navigation.navigate("ReviewCommercant", { dealId, influenceurId })
+                  }
+                  disabled={hasReviewed}
+                  style={[
+                    styles.button,
+                    hasReviewed ? styles.disabledButton : styles.primaryButton,
+                  ]}
+                >
+                  <Text style={styles.buttonText}>
+                    {hasReviewed ? "Déjà évalué" : "Noter l'influenceur"}
+                  </Text>
+                </TouchableOpacity>
+              )}
 
-            {candidature.status === "Terminé" && (
-              <TouchableOpacity
-                onPress={() =>
-                  !hasReviewed && navigation.navigate("ReviewCommercant", { dealId, influenceurId })
-                }
-                disabled={hasReviewed}
-                style={[
-                  styles.button,
-                  hasReviewed ? styles.disabledButton : styles.primaryButton,
-                ]}
-              >
-                <Text style={styles.buttonText}>
-                  {hasReviewed ? "Déjà évalué" : "Noter l'influenceur"}
-                </Text>
-              </TouchableOpacity>
-            )}
+              {candidature.status === "Approbation" && (
+                <TouchableOpacity
+                  onPress={handleApprove}
+                  disabled={approving}
+                  style={[styles.button, styles.primaryButton, approving && styles.disabledButton]}
+                >
+                  <Text style={styles.buttonText}>{approving ? "Approbation..." : "Approuver"}</Text>
+                </TouchableOpacity>
+              )}
 
-            {candidature.status === "Approbation" && (
-              <TouchableOpacity
-                onPress={handleApprove}
-                disabled={approving}
-                style={[styles.button, styles.primaryButton, approving && styles.disabledButton]}
-              >
-                <Text style={styles.buttonText}>{approving ? "Approbation..." : "Approuver"}</Text>
-              </TouchableOpacity>
-            )}
-
-            {candidature.status === "Envoyé" && (
-              <TouchableOpacity
-                onPress={handleCancel}
-                disabled={cancelling}
-                style={[styles.button, styles.cancelButton, cancelling && styles.disabledButton]}
-              >
-                <Text style={[styles.cancelButtonText]}>
-                  {cancelling ? "Résiliation..." : "Résilier"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-      </View>
-    </ScrollView>
+              {candidature.status === "Envoyé" && (
+                <TouchableOpacity
+                  onPress={handleCancel}
+                  disabled={cancelling}
+                  style={[styles.button, styles.cancelButton, cancelling && styles.disabledButton]}
+                >
+                  <Text style={[styles.cancelButtonText]}>
+                    {cancelling ? "Résiliation..." : "Résilier"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 

@@ -8,6 +8,9 @@ import {
   ScrollView,
   TextInput,
   FlatList,
+  SafeAreaView,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -49,7 +52,7 @@ export const SuivisDealsInfluenceurScreen = () => {
 
     const fetchCandidatures = async () => {
       try {
-        unsubscribe = onSnapshot(dealsRef, 
+        unsubscribe = onSnapshot(dealsRef,
           (snapshot) => {
             const myCandidatures: Candidature[] = [];
 
@@ -209,98 +212,106 @@ export const SuivisDealsInfluenceurScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Suivi Deals</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationInfluenceur')}>
-            <Image
-              source={require('../../assets/clochenotification.png')}
-              style={styles.headerIcon}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
-            <Image
-              source={require('../../assets/ekanwesign.png')}
-              style={styles.headerIcon}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F5F5E7' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Suivi Deals</Text>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity onPress={() => navigation.navigate('NotificationInfluenceur')}>
+                <Image
+                  source={require('../../assets/clochenotification.png')}
+                  style={styles.headerIcon}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('DealsInfluenceur')}>
+                <Image
+                  source={require('../../assets/ekanwesign.png')}
+                  style={styles.headerIcon}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Image
-            source={require('../../assets/loupe.png')}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher un deal..."
-            placeholderTextColor="#666666"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity 
-              onPress={() => setSearchQuery("")}
-              style={styles.clearButton}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputContainer}>
+              <Image
+                source={require('../../assets/loupe.png')}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher un deal..."
+                placeholderTextColor="#666666"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery("")}
+                  style={styles.clearButton}
+                >
+                  <Icon name="close-circle" size={20} color="#14210F" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filtersContainer}
             >
-              <Icon name="close-circle" size={20} color="#14210F" />
-            </TouchableOpacity>
+              {filters.map((filter) => (
+                <TouchableOpacity
+                  key={filter}
+                  style={[
+                    styles.filterButton,
+                    selectedFilter === filter && styles.filterButtonActive,
+                  ]}
+                  onPress={() => setSelectedFilter(filter)}
+                >
+                  <Text
+                    style={[
+                      styles.filterButtonText,
+                      selectedFilter === filter && styles.filterButtonTextActive,
+                    ]}
+                  >
+                    {filter}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Chargement en cours...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : filteredCandidatures.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Aucun deal trouvé</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredCandidatures}
+              renderItem={renderCandidature}
+              keyExtractor={(item) => item.dealId}
+              contentContainerStyle={styles.dealsList}
+            />
           )}
-        </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersContainer}
-        >
-          {filters.map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[
-                styles.filterButton,
-                selectedFilter === filter && styles.filterButtonActive,
-              ]}
-              onPress={() => setSelectedFilter(filter)}
-            >
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  selectedFilter === filter && styles.filterButtonTextActive,
-                ]}
-              >
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Chargement en cours...</Text>
+          <BottomNavbar />
         </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : filteredCandidatures.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Aucun deal trouvé</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredCandidatures}
-          renderItem={renderCandidature}
-          keyExtractor={(item) => item.dealId}
-          contentContainerStyle={styles.dealsList}
-        />
-      )}
-
-      <BottomNavbar />
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
